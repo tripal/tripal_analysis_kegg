@@ -875,17 +875,17 @@ function tripal_analysis_kegg_extract_keywords ($analysis_id) {
 	
 	// Remove kegg keywords previously stored
 	print "Remove keywords previously stored...\n";
-	$output_type_id = tripal_get_cvterm_id('kegg_brite_data');
+	$cvterm = tripal_cv_get_cvterm_by_name('kegg_brite_data');
 	$sql = "SELECT distinct AFP.analysisfeature_id FROM {analysisfeatureprop} AFP 
 					 INNER JOIN {analysisfeature} AF ON AF.analysisfeature_id = AFP.analysisfeature_id
-					 WHERE type_id = $output_type_id 
-					 AND AF.analysis_id = $analysis_id";
-	$results_remove = chado_query($sql);
-	$keyword_type_id = tripal_get_cvterm_id('analysis_kegg_output_keywords');	
+					 WHERE type_id = %d 
+					 AND AF.analysis_id = %d";
+	$results_remove = chado_query($sql,$cvterm->cvterm_id,$analysis_id);
+	$keyword = tripal_cv_get_cvterm_by_name('analysis_kegg_output_keywords');	
 	while ($record = db_fetch_object($results_remove)) {
 		$af_id = $record->analysisfeature_id;
-		$sql = "DELETE FROM {analysisfeatureprop} WHERE analysisfeature_id =$af_id AND type_id = $keyword_type_id";
-		chado_query($sql);
+		$sql = "DELETE FROM {analysisfeatureprop} WHERE analysisfeature_id =%d AND type_id = %d";
+		chado_query($sql,$af_id,$keyword->cvterm_id);
 	}
 	
 	print "Extracting keywords...\n";

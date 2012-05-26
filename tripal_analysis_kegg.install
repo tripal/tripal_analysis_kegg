@@ -19,12 +19,31 @@ function tripal_analysis_kegg_install(){
    // add the cvterms needed for this module
    tripal_analysis_kegg_add_cvterms ();
 
-   // add the db and the cv for the KEGG terms
-   tripal_add_db('KEGG','KEGG: Kyoto Encyclopedia of Genes and Genomes.',
-      'http://www.genome.jp',
-      'http://www.genome.jp/kegg/');
 
-  tripal_add_mview(
+   // make sure the KEGG databases we will be using exist.  The list of 
+   // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
+   // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY
+   tripal_db_add_db('KEGG_PATHWAY','KEGG PATHWAY is a collection of manually '.
+      'drawn pathway maps representing our knowledge on the molecular interaction '.
+      'and reaction networks.',
+      'http://www.genome.jp/kegg/pathway.html',
+      'http://www.genome.jp/dbget-bin/www_bget?pathway:map');
+   tripal_db_add_db('KEGG_BRITE','KEGG BRITE is a collection of hierarchical '.
+      'classifications from KEGG.',
+      'http://www.genome.jp/kegg/brite.html',
+      'http://www.genome.jp/kegg-bin/get_htext?');
+   tripal_db_add_db('KEGG_ORTHOLOGY','The KEGG Orthology (KO) system '.
+      'consists of manually defined ortholog groups that correspond to '.
+      'pathways, BRITE hierarchys and modules',
+      'http://www.genome.jp/kegg/ko.html',
+      'http://www.genome.jp/dbget-bin/www_bget?ko:');  
+
+   // add in the controlled vocabularies for the KEGG database. 
+   tripal_cv_add_cv('KEGG_PATHWAY','Holds terms from the KEGG PATHWAY database.');
+   tripal_cv_add_cv('KEGG_BRITE','Holds terms from the KEGG BRITE database.');
+   tripal_cv_add_cv('KEGG_ORTHOLOGY','Holds terms from the KEGG ORTHOLOGY database.');
+   
+   tripal_add_mview(
       // view name
       'kegg_by_organism',
       // tripal module name
@@ -67,12 +86,12 @@ function tripal_analysis_kegg_update_6000(){
 *
 */
 function tripal_analysis_kegg_add_cvterms () {
-   tripal_add_cvterms('analysis_kegg_settings', 'Settings of a KEGG analysis, Currently include only the heir.tar.gz file name & path.');
-   tripal_add_cvterms('kegg_brite_data', 'This term is intended for use in the analysisfeatureprop table to store the KAAS results data.');
-   tripal_add_cvterms('analysis_kegg_query_re','The regular expression for finding the feature name in the query definition line of the blast results');
-   tripal_add_cvterms('analysis_kegg_query_type','The feature type (e.g. mRNA, polypeptide) of the query input file. This type is used to identify the query feature when multiple features have the same name');
-   tripal_add_cvterms('analysis_kegg_query_uniquename','Indicates if the matched name in the query definition line of the blast results is feature uniquename');
-   tripal_add_cvterms('analysis_kegg_output_keywords', 'Selected keywords for kegg html output which are indexed for search.');
+   tripal_cv_add_cvterm(array('name' => 'analysis_kegg_settings', 'def' => 'Settings of a KEGG analysis, Currently include only the heir.tar.gz file name & path.'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'kegg_brite_data', 'def' => 'This term is intended for use in the analysisfeatureprop table to store the KAAS results data.'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_kegg_query_re','def' => 'The regular expression for finding the feature name in the query definition line of the blast results'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_kegg_query_type','def' => 'The feature type (e.g. mRNA, polypeptide) of the query input file. This type is used to identify the query feature when multiple features have the same name'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_kegg_query_uniquename','def' => 'Indicates if the matched name in the query definition line of the blast results is feature uniquename'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_kegg_output_keywords', 'def' => 'Selected keywords for kegg html output which are indexed for search.'),'tripal',0,1,'tripal');
 }
 /*******************************************************************************
 * Implementation of hook_uninstall()

@@ -413,7 +413,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
          $ko_name = $matchparts[2];
          $ko_term = array(
             'id' => $ko_id,
-            'name' => $ko_name,
+            'name' => $ko_id,
             'def' => $ko_name,
             'namespace' => 'KEGG_ORTHOLOGY',
             'is_obsolete' => 0,
@@ -493,18 +493,18 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
          $analysisfeature_id = $analysisfeature_arr[0]->analysisfeature_id;
 
          // add this term to the analysis feature properties
-         print "Adding KEGG term '$ko_id' from $heirarchy to $feature\n";
+         //print "Adding KEGG term '$ko_id' from $heirarchy to $feature\n";
          fwrite($log,"Adding KEGG term '$ko_id' from $heirarchy to $feature. Term: '$ko_name'\n");                  
 
          tripal_feature_analysis_insert_property($analysis_id, $feature_id,
-            NULL, $ko_name, $ko_name, 0, 'KEGG_ORTHOLOGY');
+            NULL, $ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
          
          // add it as a feature property
-         tripal_feature_insert_property($feature_id,$ko_name, $ko_name, 0, 'KEGG_ORTHOLOGY');
+         tripal_feature_insert_property($feature_id,$ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
             
          // associate this pathway with the feature
          if(count($pathway) > 0){
-            print "Adding KEGG term '".$pathway['name']."' from KEGG_PATHWAY to $feature\n";
+            //print "Adding KEGG term '".$pathway['name']."' from KEGG_PATHWAY to $feature\n";
             fwrite($log,"Adding KEGG term '".$pathway['name']."' from KEGG_PATHWAY to $feature\n"); 
             tripal_feature_analysis_insert_property($analysis_id, $feature_id,
                NULL, $pathway['name'], $pathway['name'], 0, 'KEGG_PATHWAY');

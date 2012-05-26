@@ -66,30 +66,6 @@ function tripal_analysis_kegg_parseHierFile ($analysis_id, $hierfile, $base_path
       print "ERROR: Unable to clear previous analysisprop results.\n";
       exit;
    }  
-   
-   
-   // make sure the KEGG databases we will be using exist.  The list of 
-   // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
-   // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY
-   tripal_db_add_db('KEGG_PATHWAY','KEGG PATHWAY is a collection of manually '.
-      'drawn pathway maps representing our knowledge on the molecular interaction '.
-      'and reaction networks.',
-      'http://www.genome.jp/kegg/pathway.html',
-      'http://www.genome.jp/dbget-bin/www_bget?pathway:map');
-   tripal_db_add_db('KEGG_BRITE','KEGG BRITE is a collection of hierarchical '.
-      'classifications from KEGG.',
-      'http://www.genome.jp/kegg/brite.html',
-      'http://www.genome.jp/kegg-bin/get_htext?');
-   tripal_db_add_db('KEGG_ORTHOLOGY','The KEGG Orthology (KO) system '.
-      'consists of manually defined ortholog groups that correspond to '.
-      'pathways, BRITE hierarchys and modules',
-      'http://www.genome.jp/kegg/ko.html',
-      'http://www.genome.jp/dbget-bin/www_bget?ko:');  
-   
-   // add in the controlled vocabularies for the KEGG database. 
-   tripal_cv_add_cv('KEGG_PATHWAY','Holds terms from the KEGG PATHWAY database.');
-   tripal_cv_add_cv('KEGG_BRITE','Holds terms from the KEGG BRITE database.');
-   tripal_cv_add_cv('KEGG_ORTHOLOGY','Holds terms from the KEGG ORTHOLOGY database.');
 
    // iterate through the files in the directory
    while ($file = readdir($dir_handle)) {
@@ -413,7 +389,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
          $ko_name = $matchparts[2];
          $ko_term = array(
             'id' => $ko_id,
-            'name' => $ko_name,
+            'name' => $ko_id,
             'def' => $ko_name,
             'namespace' => 'KEGG_ORTHOLOGY',
             'is_obsolete' => 0,
@@ -497,10 +473,10 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
          fwrite($log,"Adding KEGG term '$ko_id' from $heirarchy to $feature. Term: '$ko_name'\n");                  
 
          tripal_feature_analysis_insert_property($analysis_id, $feature_id,
-            NULL, $ko_name, $ko_name, 0, 'KEGG_ORTHOLOGY');
+            NULL, $ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
          
          // add it as a feature property
-         tripal_feature_insert_property($feature_id,$ko_name, $ko_name, 0, 'KEGG_ORTHOLOGY');
+         tripal_feature_insert_property($feature_id,$ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
             
          // associate this pathway with the feature
          if(count($pathway) > 0){

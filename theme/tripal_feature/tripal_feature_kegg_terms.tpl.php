@@ -51,13 +51,13 @@ else {
             foreach($orthologs as $prop){ 
               $urlprefix = $prop->type_id->dbxref_id->db_id->urlprefix;
               $accession = $prop->type_id->dbxref_id->accession;
-              $cvname = $prop->type_id->name;
+              $definition = $prop->type_id->definition;
               if($urlprefix){
                  $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
               }
               $rows[] = array(
                  $accession,
-                 $cvname
+                 $definition
               );
             }
             print theme('table', $header, $rows); 
