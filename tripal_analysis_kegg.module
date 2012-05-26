@@ -527,8 +527,9 @@ function tripal_analysis_kegg_preprocess(&$variables){
       $analysis->tripal_analysis_kegg->kegg_report = $report;
    }
 }
-/*******************************************************************************
- *  
+/**
+ * 
+ * @ingroup tripal_analysis_kegg 
  */
 function tripal_analysis_kegg_preprocess_tripal_organism_kegg_summary(&$variables){
    $node = $variables['node'];
@@ -723,6 +724,39 @@ function tripal_analysis_kegg_organism_results($node) {
 /************************************************************************
 */
 function tripal_analysis_kegg_load_feature_terms($feature) {
+  
+   $feature_id = $feature->feature_id;
+   
+	// Get the KEGG orthlogs for this feature
+   $values = array(
+      'feature_id' => $feature_id,
+      'type_id' => array(
+         'cv_id' => array(
+            'name' => 'KEGG_ORTHOLOGY'
+         ),
+      ),         
+   );
+   $results['KO'] = tripal_core_generate_chado_var('featureprop', $values);
+
+	// Get the KEGG pathways for this feature
+   $values = array(
+      'feature_id' => $feature_id,
+      'type_id' => array(
+         'cv_id' => array(
+            'name' => 'KEGG_PATHWAY'
+         ),
+      ),         
+   );
+   $results['PATH'] = tripal_core_generate_chado_var('featureprop', $values);
+
+   return $results;
+}
+
+/**
+* This function is kept for backwards compatiblity with KEGG results
+* stored using the 6.x-0.3-0.1 version of this module.
+*/
+function tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature) {
   
    $feature_id = $feature->feature_id;
 
