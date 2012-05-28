@@ -664,15 +664,13 @@ function tripal_analysis_kegg_full_report($analysis_id){
    // The cvterm for KEGG Brite heirarchies has changed, therefore, we
    // have two queries, one for the new method and one for backwards 
    // compatiblity.  The data, however, is still stored in the same way.
-   
-   // For the old method the CV was 'tripal' and the CVterm had a prefix of
-   // "KEGG BRITE term:". So, we look for that cvterm name for the analysis ID
-   // given
+   // the SQL below will pull both forms:
    $sql = "SELECT CVT.name, CVT.cvterm_id
            FROM {cvterm} CVT 
              INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
+             INNER JOIN cv CV on CVT.cv_id = CV.cv_id
            WHERE AP.analysis_id = %d
-              AND CVT.definition LIKE 'KEGG BRITE term: %'
+              AND (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
            ORDER BY CVT.cvterm_id";
    $previous_db = tripal_db_set_active('chado');
    $result = db_query($sql, $analysis_id);
@@ -682,22 +680,6 @@ function tripal_analysis_kegg_full_report($analysis_id){
       return $content = tripal_analysis_kegg_brite($analysis_id, $type_id, 0);
    } 
    
-   // For the new way, a KEGG_BRITE CV is used and the KEGG Brite heirarchy 
-   // terms are added to the cvterm table. These are used in the analysisprop 
-   // table
-   $sql = "SELECT CVT.name, CVT.cvterm_id
-           FROM {cvterm} CVT 
-             INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
-             INNER JOIN cv CV on CVT.cv_id = CV.cv_id
-           WHERE AP.analysis_id = %d
-              AND CV.name = 'KEGG_BRITE'
-           ORDER BY CVT.cvterm_id";
-   $previous_db = tripal_db_set_active('chado');
-   $result = db_query($sql, $analysis_id);
-   tripal_db_set_active($previous_db);
-   if (db_result($result)) {
-      return $content = tripal_analysis_kegg_brite($analysis_id, $type_id, 0);
-   }
    return "<i>Note:</i> No results available.";
 }
 /*******************************************************************************
