@@ -101,7 +101,7 @@ function chado_analysis_kegg_access($op, $node, $account){
 
 /*******************************************************************************
  */
-function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax){
+function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax,$is_v0_3=0){
    global $base_url;
    $theme_dir = drupal_get_path('theme','tripal');
    // If not called by ajax
@@ -110,17 +110,20 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax){
         "<div id=\"tripal_kegg_brite_results\" class=\"tripal_kegg_brite-info-box\">
           <table>
             <tr>
-              <th>KEGG BRITE</th>
+              <th>KEGG BRITE Heirarchy</th>
               <th id=\"tripal_kegg_brite_header\">Hierarchy:</th>
             </tr>
             <tr>
               <td nowrap valign=\"top\">
       ";
-      // List all BRITE terms on the left
+      // List all BRITE terms on the left. The SQL statement below can use
+      // the older method for CVTerms with BRITE hierarchies or the newer method
       $sql = "SELECT DISTINCT CVT.name, CVT.cvterm_id
               FROM {cvterm} CVT 
                 INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
-              WHERE AP.analysis_id = %d AND CVT.definition LIKE 'KEGG BRITE term: %'
+                INNER JOIN cv CV on CV.cv_id = CVT.cv_id
+              WHERE AP.analysis_id = %d AND 
+                 (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
               ORDER BY CVT.cvterm_id";
       $previous_db = tripal_db_set_active('chado');
       $result = db_query($sql, $analysis_id);
@@ -149,8 +152,8 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax){
            FROM {analysisprop} AP
              INNER JOIN CVterm CVT on AP.type_id = CVT.cvterm_id
              INNER JOIN CV on CVT.cv_id = CV.cv_id
-           WHERE CV.name = 'tripal' and CVT.name = '%s' 
-           AND AP.analysis_id = %d";
+           WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = '%s' 
+              AND AP.analysis_id = %d";
 
       $result = db_fetch_object(db_query($sql, $brite_term, $analysis_id));
       tripal_db_set_active($previous_db);
@@ -630,7 +633,7 @@ function tripal_analysis_kegg_load_organism_kegg_summary($node) {
    $results = db_query($sql,$organism->organism_id);
    tripal_db_set_active($previous_db);
 
-   # check to ensure we have access to at least one of the GO analyses
+   # check to ensure we have access to at least one of the KEGG analyses
    $has_results = 0;
    while($analysis = db_fetch_object($results)){
       $anode = tripal_analysis_get_node($analysis->analysis_id);
@@ -668,7 +671,15 @@ function tripal_analysis_kegg_org_report($analysis_id){
 /************************************************************************
  */
 function tripal_analysis_kegg_full_report($analysis_id){
-   // Test if brite data have been parsed into the database
+   $has_results = 0;
+   
+   // The cvterm for KEGG Brite heirarchies has changed, therefore, we
+   // have two queries, one for the new method and one for backwards 
+   // compatiblity.  The data, however, is still stored in the same way.
+   
+   // For the old method the CV was 'tripal' and the CVterm had a prefix of
+   // "KEGG BRITE term:". So, we look for that cvterm name for the analysis ID
+   // given
    $sql = "SELECT CVT.name, CVT.cvterm_id
            FROM {cvterm} CVT 
              INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
@@ -680,11 +691,26 @@ function tripal_analysis_kegg_full_report($analysis_id){
    tripal_db_set_active($previous_db);
 
    if (db_result($result)) {
-      $content = tripal_analysis_kegg_brite($analysis_id, $type_id, 0);
-   } else {
-      $content = "<i>Note:</i> Analysis result is not available. Please schedule and run the job to parse the kegg output.";
+      return $content = tripal_analysis_kegg_brite($analysis_id, $type_id, 0);
+   } 
+   
+   // For the new way, a KEGG_BRITE CV is used and the KEGG Brite heirarchy 
+   // terms are added to the cvterm table. These are used in the analysisprop 
+   // table
+   $sql = "SELECT CVT.name, CVT.cvterm_id
+           FROM {cvterm} CVT 
+             INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
+             INNER JOIN cv CV on CVT.cv_id = CV.cv_id
+           WHERE AP.analysis_id = %d
+              AND CV.name = 'KEGG_BRITE'
+           ORDER BY CVT.cvterm_id";
+   $previous_db = tripal_db_set_active('chado');
+   $result = db_query($sql, $analysis_id);
+   tripal_db_set_active($previous_db);
+   if (db_result($result)) {
+      return $content = tripal_analysis_kegg_brite($analysis_id, $type_id, 0);
    }
-   return $content;
+   return "<i>Note:</i> No results available.";
 }
 /*******************************************************************************
  * Tripal Kegg administrative setting form. This function is called by
