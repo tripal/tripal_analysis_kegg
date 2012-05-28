@@ -2,13 +2,14 @@
 
 $feature  = $variables['node']->feature;
 $results = $feature->tripal_analysis_kegg->results;
+$results_v3_0 = $feature->tripal_analysis_kegg->results_v3_0;
 
 // The way KEGG results are stored in the database has changed. Now the results
 // array contains two fields: 'KO' for kegg orthologs and 'PATH' for kegg 
 // pathways. Previously only orthologs were stored.  However, we want the
 // template to be backwards compatible with the old way, so we check the
 // $results array for the 'KO' key and handle the results differently
-if(!array_key_exists('KO',$results)){
+if(count($results_v3_0)>0){
   include('tripal_feature_kegg_terms_0.3.tpl_php');
 }
 else {
@@ -28,9 +29,9 @@ else {
          <div class="tripal_feature-kegg_results_subtitle"></div>           
             <strong>Assigned KEGG Pathways</strong>
             <?php
-            $header = array('KEGG Pathway','Name');
+            $header = array('KEGG Pathway','Definition');
             $rows = array();
-            foreach($pathways as $prop){ 
+            foreach($pathways as $prop){               
               $urlprefix = $prop->type_id->dbxref_id->db_id->urlprefix;
               $accession = $prop->type_id->dbxref_id->accession;
               $cvname = $prop->type_id->name;
@@ -46,9 +47,11 @@ else {
             ?>
             <strong>Assigned KEGG Orthologs</strong>
             <?php
-            $header = array('KEGG Ortholog','Name');
+            $header = array('KEGG Ortholog','Definition');
             $rows = array();
             foreach($orthologs as $prop){ 
+              // add in the definition (it's a text column);
+              $prop = tripal_core_expand_chado_vars($prop,'field','cvterm.definition');
               $urlprefix = $prop->type_id->dbxref_id->db_id->urlprefix;
               $accession = $prop->type_id->dbxref_id->accession;
               $definition = $prop->type_id->definition;

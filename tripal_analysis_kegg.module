@@ -546,6 +546,7 @@ function tripal_analysis_kegg_preprocess_tripal_feature_kegg_terms(&$variables){
    $node = $variables['node'];
    $feature = $node->feature;
    $feature->tripal_analysis_kegg->results = tripal_analysis_kegg_load_feature_terms($feature);
+   $feature->tripal_analysis_kegg->results_v0_3 = tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature);
 }
 /************************************************************************
  */
@@ -647,20 +648,7 @@ function tripal_analysis_kegg_load_organism_kegg_summary($node) {
    );
 }
 /************************************************************************
- 
-
-   // Show Kegg additional information on a KEGG Analysis page
-   if ($node->type == 'chado_analysis_kegg') {
-      return tripal_analysis_kegg_full_report($node->analysis_id);
-   }   
-   
-   // Show Kegg-info-box on a Feature page
-   else if ($node->type == 'chado_feature') {
-       return tripal_analysis_kegg_feature_add($node);
-   } 
-   
-   return $content;
-}
+ *
  */
 
 function tripal_analysis_kegg_org_report($analysis_id){

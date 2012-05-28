@@ -1,4 +1,5 @@
 <?php
+$results = $feature->tripal_analysis_kegg->results_v3_0;
 
 if($feature->cvname != 'gene' and count($results) > 0){ 
    $i = 0;
