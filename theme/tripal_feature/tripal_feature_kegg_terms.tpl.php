@@ -17,7 +17,7 @@ if(count($results_v0_3)>0){
         $analysis = $analysisprops['analysis'];
         $terms = $analysisprops['terms']; 
         ?>
-        <div id="tripal_feature-kegg_results_<?php print $i?>-box" class="tripal_analysis_kegg-box tripal-info-box">
+        <div id="tripal_feature-kegg_results_<?php print $i?>-box" class="tripal_feature_kegg-box tripal-info-box">
            <div class="tripal_feature-info-box-title tripal-info-box-title">KEGG Report <?php print preg_replace("/^(\d+-\d+-\d+) .*/","$1",$analysis->timeexecuted); ?></div>
            <div class="tripal_feature-info-box-desc tripal-info-box-desc"><?php 
                if($analysis->nid){ ?>
@@ -62,30 +62,32 @@ else {
    }
    $i = 0;
    ?>
-   <div id="tripal_feature-kegg_results_<?php print $i?>-box" class="tripal_analysis_kegg-box tripal-info-box">
+   <div id="tripal_feature-kegg-box" class="tripal_feature-box tripal-info-box">
       <div class="tripal_feature-info-box-title tripal-info-box-title">KEGG Assignments</div>
       <div class="tripal_feature-info-box-desc tripal-info-box-desc">
-         <div class="tripal_feature-kegg_results_subtitle"></div>           
-            <strong>Assigned KEGG Pathways</strong>
-            <?php
+         <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Pathways</div><?php
+         if($results['PATH']){
             $header = array('KEGG Pathway','Definition');
             $rows = array();
             foreach($pathways as $prop){               
-              $urlprefix = $prop->type_id->dbxref_id->db_id->urlprefix;
-              $accession = $prop->type_id->dbxref_id->accession;
-              $cvname = $prop->type_id->name;
-              if($urlprefix){
-                 $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
-              }
-              $rows[] = array(
-                 $accession,
-                 $cvname
-              );
+               $urlprefix = $prop->type_id->dbxref_id->db_id->urlprefix;
+               $accession = $prop->type_id->dbxref_id->accession;
+               $cvname = $prop->type_id->name;
+               if($urlprefix){
+                  $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
+               }
+               $rows[] = array(
+                  $accession,
+                  $cvname
+               );
             }
             print theme('table', $header, $rows); 
-            ?>
-            <strong>Assigned KEGG Orthologs</strong>
-            <?php
+         } else { 
+            print "<div class=\"tripal-no-results\">There are no KEGG pathways for this feature</div>";
+         } ?>
+         <br><br>
+         <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Orthologs</div><?php
+         if($results['KO']){
             $header = array('KEGG Ortholog','Definition');
             $rows = array();
             foreach($orthologs as $prop){ 
@@ -103,8 +105,9 @@ else {
               );
             }
             print theme('table', $header, $rows); 
-            ?>
-         </div>
+         } else { 
+            print "<div class=\"tripal-no-results\">There are no KEGG orthologs for this feature</div>";
+         } ?>
       </div>
    </div>
 <?php } ?>
