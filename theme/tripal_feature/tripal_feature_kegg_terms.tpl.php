@@ -4,6 +4,11 @@ $feature  = $variables['node']->feature;
 $results = $feature->tripal_analysis_kegg->results;
 $results_v0_3 = $feature->tripal_analysis_kegg->results_v0_3;
 
+// don't show this block on the page if there are no KEGG results
+if(!$results[KO] and !$results[PATH] and !$results_v0_3){
+  goto END;
+}
+
 // The way KEGG results are stored in the database has changed. Now the results
 // array contains two fields: 'KO' for kegg orthologs and 'PATH' for kegg 
 // pathways. Previously only orthologs were stored.  However, we want the
@@ -109,5 +114,7 @@ else {
             print "<div class=\"tripal-no-results\">There are no KEGG orthologs for this feature</div>";
          } ?>
       </div>
-   </div>
-<?php } ?>
+   </div> <?php 
+} 
+END:
+?>
