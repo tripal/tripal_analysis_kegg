@@ -1,5 +1,5 @@
 ; $Id: tripal_analysis_kegg.info,v 1.2 2009/10/23 02:12:27 ccheng Exp $
-name = Tripal Kegg
+name = Tripal KEGG
 description = An analysis sub-module for adding, editing, and displaying KEGG/KAAS analysis results.
 core = 6.x
 project = tripal_analysis_kegg

@@ -19,14 +19,6 @@ function tripal_analysis_kegg_install(){
    // add the cvterms needed for this module
    tripal_analysis_kegg_add_cvterms ();
 
-<<<<<<< HEAD
-   // add the db and the cv for the KEGG terms
-   tripal_db_add_db('KEGG','KEGG: Kyoto Encyclopedia of Genes and Genomes.',
-      'http://www.genome.jp',
-      'http://www.genome.jp/kegg/');
-=======
->>>>>>> 89c5452217813f2b2b13045db8a6cb213b10ca00
-
    // make sure the KEGG databases we will be using exist.  The list of 
    // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
    // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY
