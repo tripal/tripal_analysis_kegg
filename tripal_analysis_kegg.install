@@ -19,12 +19,38 @@ function tripal_analysis_kegg_install(){
    // add the cvterms needed for this module
    tripal_analysis_kegg_add_cvterms ();
 
+<<<<<<< HEAD
    // add the db and the cv for the KEGG terms
    tripal_db_add_db('KEGG','KEGG: Kyoto Encyclopedia of Genes and Genomes.',
       'http://www.genome.jp',
       'http://www.genome.jp/kegg/');
+=======
+>>>>>>> 89c5452217813f2b2b13045db8a6cb213b10ca00
 
-  tripal_add_mview(
+   // make sure the KEGG databases we will be using exist.  The list of 
+   // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
+   // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY
+   tripal_db_add_db('KEGG_PATHWAY','KEGG PATHWAY is a collection of manually '.
+      'drawn pathway maps representing our knowledge on the molecular interaction '.
+      'and reaction networks.',
+      'http://www.genome.jp/kegg/pathway.html',
+      'http://www.genome.jp/dbget-bin/www_bget?pathway:map');
+   tripal_db_add_db('KEGG_BRITE','KEGG BRITE is a collection of hierarchical '.
+      'classifications from KEGG.',
+      'http://www.genome.jp/kegg/brite.html',
+      'http://www.genome.jp/kegg-bin/get_htext?');
+   tripal_db_add_db('KEGG_ORTHOLOGY','The KEGG Orthology (KO) system '.
+      'consists of manually defined ortholog groups that correspond to '.
+      'pathways, BRITE hierarchys and modules',
+      'http://www.genome.jp/kegg/ko.html',
+      'http://www.genome.jp/dbget-bin/www_bget?ko:');  
+
+   // add in the controlled vocabularies for the KEGG database. 
+   tripal_cv_add_cv('KEGG_PATHWAY','Holds terms from the KEGG PATHWAY database.');
+   tripal_cv_add_cv('KEGG_BRITE','Holds terms from the KEGG BRITE database.');
+   tripal_cv_add_cv('KEGG_ORTHOLOGY','Holds terms from the KEGG ORTHOLOGY database.');
+   
+   tripal_add_mview(
       // view name
       'kegg_by_organism',
       // tripal module name

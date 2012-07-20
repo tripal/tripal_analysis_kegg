@@ -9,7 +9,18 @@
      if($has_results){
         print $form;
      } else {
-       ?><div class="tripal-no-results">There are no KEGG reports available</div><?php
+       ?><div class="tripal-no-results">
+          There are no KEGG reports available
+          <?php if(user_access('access administration pages')){ ?>
+              <p><br>Administrators, to view a KEGG report you must:
+              <ul>
+                 <li>Load a KEGG analysis</li>
+                 <li>Populate the <a href="<?php print url('admin/tripal/mviews');?>" target="_blank">kegg_by_organism</a> materialized view</li>
+                 <li>Ensure the use has permission to view the KEGG analysis page</li>
+                 <li>Refresh this page</li>
+              </ul> </p>
+           <?php }?>
+         </div><?php
      }
   ?>
    <div id="tripal_analysis_kegg_org_report"></div>
