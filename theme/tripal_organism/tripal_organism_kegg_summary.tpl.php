@@ -24,12 +24,13 @@ else {
         There are no KEGG reports available
         <p><br>Administrators, to view a KEGG report you must:
         <ul>
-          <li>Load a KEGG analysis</li>
-          <li>Populate the <a href="<?php print url('admin/tripal/mviews');?>" target="_blank">kegg_by_organism</a> materialized view</li>
-          <li>Ensure the use has permission to view the KEGG analysis page</li>
+          <li>Create a <a href="<?php print url('node/add/chado-analysis-kegg'); ?>" target="_blank">KEGG analysis page</a>.</li>
+          <li>Populate the <a href="<?php print url('admin/tripal/mviews'); ?>" target="_blank">kegg_by_organism</a> materialized view</li>
+          <li>Ensure the user <a href="<?php print url('admin/user/permissions'); ?>"> has permission</a> to view the KEGG analysis content</li>
           <li>Refresh this page</li>
         </ul> 
         </p>
+        This page will not appear to site visitors unless the KEGG data is present. 
       </div>
     </div><?php 
   }
