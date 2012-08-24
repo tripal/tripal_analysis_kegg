@@ -216,6 +216,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
       );
       fwrite($log, "Adding term: '$heirarchy' ($heirarchy_id)\n");
       $cvterm = tripal_cv_add_cvterm($brite_term, 'KEGG_BRITE', 0, 0, 'KEGG_BRITE');
+print_r($cvterm);
       if (!$cvterm) {
         fwrite($log, "Failed.  Cannot add cvterm '$heirarchy'\n");
         return;
