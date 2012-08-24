@@ -500,6 +500,11 @@ function tripal_analysis_kegg_theme() {
           'template' => 'tripal_feature_kegg_terms',
           'path' => $path . '/tripal_feature',
       ),
+      'tripal_analysis_kegg_base' => array(
+          'arguments' => array('node' => NULL),
+          'template' => 'tripal_analysis_kegg_base',
+          'path' => $path . '/tripal_analysis_kegg',
+      ),
       'tripal_analysis_kegg_report' => array(
           'arguments' => array('node' => NULL),
           'template' => 'tripal_analysis_kegg_report',
