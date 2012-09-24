@@ -58,7 +58,7 @@ function tripal_analysis_kegg_install() {
       'analysis_id,organism_id',
       // SQL statement to populate the view
       "SELECT DISTINCT A.name,A.analysis_id,F.organism_id
-       FROM {analysisprop} AP
+       FROM analysisprop AP
           INNER JOIN analysis A on A.analysis_id = AP.analysis_id
           INNER JOIN cvterm CVT on CVT.cvterm_id = AP.type_id
           INNER JOIN analysisfeature AF on AF.analysis_id = A.analysis_id
