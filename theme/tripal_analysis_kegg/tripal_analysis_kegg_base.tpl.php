@@ -18,7 +18,7 @@ $analysis = tripal_core_expand_chado_vars($analysis,'field','analysis.descriptio
         <th nowrap>Software</th>
         <td><?php 
           print $analysis->program; 
-          if($analysis->programversion){
+          if ($analysis->programversion and $analysis->programversion != 'n/a') {
              print " (" . $analysis->programversion . ")"; 
           }
           if($analysis->algorithm){
