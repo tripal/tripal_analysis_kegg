@@ -347,6 +347,10 @@ function chado_analysis_kegg_load($node) {
   $query_re        = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_re');
   $query_type      = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_type');
   $query_uniquename= tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_uniquename');
+  
+  if (!is_object($analysis->tripal_analysis_kegg)) {
+    $analysis->tripal_analysis_kegg = new stdClass;
+  }
 
   $analysis->tripal_analysis_kegg->hierfile = $hierfile->value;
   $analysis->tripal_analysis_kegg->query_re        = $query_re->value;
@@ -524,6 +528,10 @@ function tripal_analysis_kegg_preprocess(&$variables) {
   if ($variables['template_files'][0] == 'node-chado_analysis_kegg') {
     $analysis = $variables['node']->analysis;
     $report = tripal_analysis_kegg_full_report($analysis->analysis_id);
+    
+    if (!is_object($analysis->tripal_analysis_kegg)) {
+      $analysis->tripal_analysis_kegg = new stdClass;  
+    }
     $analysis->tripal_analysis_kegg->kegg_report = $report;
   }
 }
@@ -534,6 +542,9 @@ function tripal_analysis_kegg_preprocess(&$variables) {
 function tripal_analysis_kegg_preprocess_tripal_organism_kegg_summary(&$variables) {
   $node = $variables['node'];
   $organism = $node->organism;
+  if (!is_object($organism->tripal_analysis_kegg)){
+    $organism->tripal_analysis_kegg = new stcClass;  
+  }
   $organism->tripal_analysis_kegg->select_form = tripal_analysis_kegg_load_organism_kegg_summary($node);
 }
 /**
@@ -542,6 +553,9 @@ function tripal_analysis_kegg_preprocess_tripal_organism_kegg_summary(&$variable
 function tripal_analysis_kegg_preprocess_tripal_feature_kegg_terms(&$variables) {
   $node = $variables['node'];
   $feature = $node->feature;
+  if (!is_object($feature->tripal_analysis_kegg)) {
+    $feature->tripal_analysis_kegg = new stcClass;  
+  }
   $feature->tripal_analysis_kegg->results = tripal_analysis_kegg_load_feature_terms($feature);
   $feature->tripal_analysis_kegg->results_v0_3 = tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature);
 }
