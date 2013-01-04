@@ -543,7 +543,7 @@ function tripal_analysis_kegg_preprocess_tripal_organism_kegg_summary(&$variable
   $node = $variables['node'];
   $organism = $node->organism;
   if (!is_object($organism->tripal_analysis_kegg)){
-    $organism->tripal_analysis_kegg = new stcClass;  
+    $organism->tripal_analysis_kegg = new stdClass;  
   }
   $organism->tripal_analysis_kegg->select_form = tripal_analysis_kegg_load_organism_kegg_summary($node);
 }
@@ -554,7 +554,7 @@ function tripal_analysis_kegg_preprocess_tripal_feature_kegg_terms(&$variables) 
   $node = $variables['node'];
   $feature = $node->feature;
   if (!is_object($feature->tripal_analysis_kegg)) {
-    $feature->tripal_analysis_kegg = new stcClass;  
+    $feature->tripal_analysis_kegg = new stdClass;  
   }
   $feature->tripal_analysis_kegg->results = tripal_analysis_kegg_load_feature_terms($feature);
   $feature->tripal_analysis_kegg->results_v0_3 = tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature);
