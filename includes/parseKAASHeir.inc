@@ -10,6 +10,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
 
   // If user input a file (e.g. hier.tar.gz), decompress it first
   if (is_file($hierfile)) {
+    print "Unpacking heir file...\n";
     // generate a unique directory name for extracting and parsing the file
     $data_dir = sys_get_temp_dir() . "/" . uniqid();
     mkdir($data_dir);
@@ -32,6 +33,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
   else {
     $hierdir = $hierfile;
   }
+  print "Counting Files...\n";
   $dir_handle = @opendir($hierdir) or die("Unable to open unpacked KEGG heir directory: $hierdir\n");
   $total_files = count(glob($hierdir . '/*.keg'));
 
@@ -45,6 +47,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
   }
    
   // remove the analysis BRITE_TERMS from the analysisprop table
+  print "Preparing database...\n";
   $sql = "
     DELETE FROM {analysisprop}
     WHERE analysis_id = %d and
@@ -514,7 +517,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
  * 
  */
 function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files){  
-  $interval = intval($filesize * 0.01);
+  $interval = intval($filesize * 0.001);
   if ($interval < 1) {
     $interval = 1;
   }  
