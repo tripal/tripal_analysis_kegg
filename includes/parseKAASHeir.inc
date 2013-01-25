@@ -524,9 +524,8 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
 
       // Add link to each matched feature
       if ($nid) {
-        // remove the domain from the base path to make the link relative
-        $root = preg_replace("/^http:\/\/(.*?)/", '', $base_path);
-        $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$root/node/$nid\">"."$1"."</a>"."$2", $value);
+        // TODO: remove the domain from the base path to make the link relative        
+        $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$base_path/node/$nid\">"."$1"."</a>"."$2", $value);
       }
       // if we have a feature match then add this to our results array
       return $value;
