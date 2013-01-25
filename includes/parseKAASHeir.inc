@@ -7,6 +7,19 @@
 
 function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     $query_re, $query_type, $query_uniquename, $job_id) {
+      
+  // make sure we have a persistent db connection
+  $connection = tripal_db_persistent_chado();
+  
+  // prepare the statement we'll use later to get the node id of the feature
+  $sql = "PREPARE get_feature_nid (int) AS 
+          SELECT nid FROM {chado_feature} WHERE feature_id = \$1";
+  if (!db_query($sql)) {
+    watchdog('tr_kegg_parse',"ERROR: Cannot prepare statement 'get_feature_nid'.", 
+      array(), 'error');
+    exit;
+  }
+   
 
   // If user input a file (e.g. hier.tar.gz), decompress it first
   if (is_file($hierfile)) {
@@ -77,18 +90,20 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
       if (count($results) > 0) {
 
         // Get type_id for the BRITE term
-        $sql = "
-          SELECT cvterm_id
-          FROM {cvterm} CVT
-            INNER JOIN CV ON CVT.cv_id = CV.cv_id
-          WHERE CV.name = 'KEGG_BRITE' AND CVT.name = '%s'
-        ";
-        $brite_cvterm_id = db_result(chado_query($sql, $heirarchy));
-        if (!$brite_cvterm_id) {
+        $values = array(
+          'cv_id' => array(
+             'name' => 'KEGG_BRITE'
+           ),
+          'name' => $heirarchy,
+        );
+        $options = array('statement_name' => 'sel_cvterm_cvna');
+        $brite_term = tripal_core_chado_select('cvterm', array('cvterm_id'), $values, $options);
+        if (!$brite_term or count($brite_term) == 0) {
           watchdog('tr_kegg_parse', "ERROR: Cannot find cvterm for '%heirarchy'", 
             array('%heirarchy' => $heirarchy), 'error');
           exit;
         }
+        $brite_cvterm_id = $brite_term[0]->cvterm_id;
 
         // KEGG results are returned in an array format, however
         // to make display a bit easier on the web using CSS, the array
@@ -497,7 +512,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       }
 
       // get the node ID of the feature if one exists
-      $sql = "SELECT nid FROM {chado_feature} WHERE feature_id = %d";
+      $sql = "EXECUTE get_feature_nid(%s)";
       $nid = db_result(chado_query($sql, $feature_id));
 
       // Add link to each matched feature
