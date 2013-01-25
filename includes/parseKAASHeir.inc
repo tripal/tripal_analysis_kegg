@@ -86,8 +86,8 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     if (preg_match("/^.*\.keg/", $file)) {     
       $no_file++;
        
-      # $heirarchy variable will be set in tripal_analysis_kegg_parse_kegg_file()
-      $results = tripal_analysis_kegg_parse_kegg_file("$hierdir/$file", $heirarchy,
+      # $hierarchy variable will be set in tripal_analysis_kegg_parse_kegg_file()
+      $results = tripal_analysis_kegg_parse_kegg_file("$hierdir/$file", $hierarchy,
           $analysis_id, $base_path, $query_re, $query_type, $query_uniquename, $no_file, 
           $total_files);
 
@@ -99,13 +99,13 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
           'cv_id' => array(
              'name' => 'KEGG_BRITE'
            ),
-          'name' => $heirarchy,
+          'name' => $hierarchy,
         );
         $options = array('statement_name' => 'sel_cvterm_cvna');
         $brite_term = tripal_core_chado_select('cvterm', array('cvterm_id'), $values, $options);
         if (!$brite_term or count($brite_term) == 0) {
-          watchdog('tr_kegg_parse', "ERROR: Cannot find cvterm for '%heirarchy'", 
-            array('%heirarchy' => $heirarchy), 'error');
+          watchdog('tr_kegg_parse', "ERROR: Cannot find hierarchy cvterm: '%heirarchy'", 
+            array('%heirarchy' => $hierarchy), 'error');
           exit;
         }
         $brite_cvterm_id = $brite_term[0]->cvterm_id;
@@ -131,7 +131,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
         $success = tripal_core_chado_insert('analysisprop', $values, $options);
         if (!$success) {
           watchdog('tr_kegg_parse',"ERROR: Cannot add '%heirarchy' results to the database.",
-            array('%heirarchy' => $heirarchy), 'error');
+            array('%heirarchy' => $hierarchy), 'error');
           exit;
         }
       }
@@ -180,15 +180,15 @@ function tripal_analysis_kegg_array2list($array, &$content, &$i) {
  * and added to chado as a cvterm. Tree structure for this cvterm is then
  * generated and saved to analysisfeature and analysisfeatureprop tables.
  */
-function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
+function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id,
     $base_path, $query_re, $query_type, $query_uniquename, $no_file, $total_files) {
 
   $filepos = 0;
 
   // iterate through the lines of the file and recurse through the various levels
   $handle = fopen($file, 'r');
-  $heirarchy = '';
-  $heirarchy_id = '';
+  $hierarchy = '';
+  $hierarchy_id = '';
   $filesize = filesize($file);
   $intv_read = 0; 
   $matches = array();  
@@ -203,34 +203,34 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
     // the .keg files represtend the KEGG BRITE Functional heirarchies.  These
     // heirarchies begin with a ko
     if (preg_match("/#.*nbsp;\s(.*)<\/h2>$/", $line, $matches)) {
-      $heirarchy = $matches[1];
+      $hierarchy = $matches[1];
     }
     // KEGG BRITE heirarchy terms have a prefix of 'ko' and are found in the
     // header portion of each file.
     if (preg_match("/#ENTRY\s+(ko.*)$/", $line, $matches)) {
-      $heirarchy_id = $matches[1];
+      $hierarchy_id = $matches[1];
     }
     // once we have the term ID and name we can parse the rest of the file
-    if ($heirarchy and $heirarchy_id) {
+    if ($hierarchy and $hierarchy_id) {
       // there is a mistake in the q01007.keg file which incorrectly lists the
       // BRITE Id as ko01006.  We'll correct it here
-      if ($heirarchy_id == 'ko01006' and $heirarchy == 'Amino acid related enzymes') {
-        $heirarchy_id = 'ko01007';
+      if ($hierarchy_id == 'ko01006' and $hierarchy == 'Amino acid related enzymes') {
+        $hierarchy_id = 'ko01007';
       }
        
       // add the cvterm
       $brite_term = array(
-          'id' => "$heirarchy_id",
-          'name' => $heirarchy,
-          'def' => $heirarchy,
-          'namespace' => 'KEGG_BRITE',
-          'is_obsolete' => 0,
+        'id' => "$hierarchy_id",
+        'name' => $hierarchy,
+        'def' => $hierarchy,
+        'namespace' => 'KEGG_BRITE',
+        'is_obsolete' => 0,
       );
 
-      $cvterm = tripal_cv_add_cvterm($brite_term, 'KEGG_BRITE', 0, 0, 'KEGG_BRITE');
+      $cvterm = tripal_cv_add_cvterm($brite_term, 'KEGG_BRITE', 0, 1, 'KEGG_BRITE');
       if (!$cvterm) {
         watchdog('tr_kegg_parse', "Failed.  Cannot add cvterm '%heirarchy'.",
-          array('%heirarchy', $heirarchy), 'error');        
+          array('%heirarchy', $hierarchy), 'error');        
         return;
       }
 
@@ -239,7 +239,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
         $intv_read, $no_file, $total_files);
               
       $results = tripal_analysis_kegg_recurse_heir($handle, $next, $query_re,
-          $query_type, $query_uniquename, $base_path, $analysis_id, $heirarchy,
+          $query_type, $query_uniquename, $base_path, $analysis_id, $hierarchy,
           $filepos, $filesize, $intv_read, $no_file, $total_files);
     }
   }
@@ -252,7 +252,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
  */
 function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
     $query_type, $query_uniquename, $base_path, $analysis_id,
-    $heirarchy, &$filepos, $filesize, &$intv_read, $no_file, $total_files) {
+    $hierarchy, &$filepos, $filesize, &$intv_read, $no_file, $total_files) {
   $results = array();
 
   // get the current level and the value
@@ -282,7 +282,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
     // check this line to see if it has a feature we need to keep
     $ret = tripal_analysis_kegg_check_line_handle_feature($query_re,
         $query_type, $query_uniquename, $base_path, $analysis_id,
-        $heirarchy, $value, $pathway);
+        $hierarchy, $value, $pathway);
     if ($ret) {
       $results[] = $ret;
     }
@@ -292,7 +292,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
       // now recurse
       $ret = tripal_analysis_kegg_recurse_heir($handle, $next,
           $query_re, $query_type, $query_uniquename, $base_path, $analysis_id,
-          $heirarchy, $filepos, $filesize, $intv_read, $no_file, $total_files);
+          $hierarchy, $filepos, $filesize, $intv_read, $no_file, $total_files);
       if (count($ret) > 0) {
         $results[][$value] = $ret;
       }
@@ -394,7 +394,7 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$int
  */
 function tripal_analysis_kegg_check_line_handle_feature($query_re,
     $query_type, $query_uniquename, $base_path, $analysis_id,
-    $heirarchy, $value, $pathway) {
+    $hierarchy, $value, $pathway) {
 
   // extract the features that have been mapped to the KEGG IDs
   if (preg_match("/^(.*?);\s*(\<a.+)/", $value, $matches)) {
