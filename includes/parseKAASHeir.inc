@@ -10,6 +10,11 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
       
   // make sure we have a persistent db connection
   $connection = tripal_db_persistent_chado();
+  if (!$connection) {
+    watchdog('tr_kegg_parse',"NOTICE: Cannot create persistent connection to the database. Uploading may be slow", 
+        array(), 'notice');
+      exit;  
+  }
   
   // prepare the statement we'll use later to get the node id of the feature
   $sql = "PREPARE get_feature_nid (int) AS 
@@ -186,12 +191,13 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
   $heirarchy_id = '';
   $filesize = filesize($file);
   $intv_read = 0; 
-
+  $matches = array();  
   
   while ($line = fgets($handle)) {
     $filepos += strlen($line);
     $intv_read += strlen($line);
-    $line = trim($line);    
+    $line = trim($line);       
+
     tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files); 
 
     // the .keg files represtend the KEGG BRITE Functional heirarchies.  These
@@ -220,6 +226,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
           'namespace' => 'KEGG_BRITE',
           'is_obsolete' => 0,
       );
+
       $cvterm = tripal_cv_add_cvterm($brite_term, 'KEGG_BRITE', 0, 0, 'KEGG_BRITE');
       if (!$cvterm) {
         watchdog('tr_kegg_parse', "Failed.  Cannot add cvterm '%heirarchy'.",
@@ -531,16 +538,23 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
 /*
  * 
  */
-function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files){  
+function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files){ 
+  static $last_percent = 0; 
   $interval = $filesize * 0.001;
   if ($interval < 1) {
     $interval = $filesize;
   }  
-      
+            
   if ($intv_read >= $interval) {
     $intv_read = 0;
-    $percentage = $no_file * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files);
-    print "Parsing KEGG file $no_file of $total_files (" . sprintf("%.4f", $percentage) . "%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
-    tripal_job_set_progress($job_id, $percentage);
+    $percentage = sprintf("%.4f", $no_file * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files));
+   
+    print "Parsing KEGG file $no_file of $total_files  ($percentage%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
+    
+    // we don't want to update the databe
+    if($percentage - $last_percent > 1) {
+      tripal_job_set_progress($job_id, $percentage);
+    }
+    $last_percent = $percentage;
   } 
 }
