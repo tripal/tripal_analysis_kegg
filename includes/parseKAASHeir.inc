@@ -8,23 +8,16 @@
 function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     $query_re, $query_type, $query_uniquename, $job_id) {
 
-  // Prepare log
-  $filename = preg_replace("/.*\/(.*)/", "$1", $hierfile);
-  $logfile = file_directory_path() . "/tripal/tripal_analysis_kegg/load_$filename.log";
-  $logfile = tempnam(sys_get_temp_dir(), "tripal_analysis_kegg_import");
-  $log = fopen($logfile, 'a'); // append parsing results to log file
-  if (!$log) {
-    print "ERROR: cannot open log file: $logfile\n";
-    exit;
-  }
-
   // If user input a file (e.g. hier.tar.gz), decompress it first
   if (is_file($hierfile)) {
     // generate a unique directory name for extracting and parsing the file
     $data_dir = sys_get_temp_dir() . "/" . uniqid();
     mkdir($data_dir);
     $stderr = shell_exec("cd $data_dir; tar -zxf $hierfile;");
-    print "$stderr\n";
+    if ($stderr) {
+      watchdog('tr_kegg_parse',"ERROR: %err", array('%err' => $stderr), 'error');
+      exit;
+    }
     // now get the uncompressed directory name.  There should only be one
     // other directory in our temp data directory so get that
     $dhandle = @opendir($data_dir);
@@ -40,66 +33,57 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     $hierdir = $hierfile;
   }
   $dir_handle = @opendir($hierdir) or die("Unable to open unpacked KEGG heir directory: $hierdir\n");
-  $total_files = count(glob($hierdir . '/*.*'));
-  fwrite($log, "There are $total_files keg file(s).\n");
-  $interval = intval($total_files * 0.01);
-  if ($interval < 1) {
-    $interval = 1;
-  }
-  $no_file = 0;
+  $total_files = count(glob($hierdir . '/*.keg'));
+
 
   // Remove the analysis features for this analysis
   // we will rebuild them from just this parsing
   $select =  array('analysis_id' => $analysis_id);
-  if (!tripal_core_chado_delete('analysisfeature', $select)) {
-    print "ERROR: Unable to clear previous results.\n";
+  if (!tripal_core_chado_delete('analysisfeature', $select)) {    
+    watchdog('tr_kegg_parse',"ERROR: Unable to clear previous results", array(), 'error');    
     exit;
   }
    
   // remove the analysis BRITE_TERMS from the analysisprop table
-  $sql = "DELETE FROM {analysisprop}
-  WHERE analysis_id = %d and
-  type_id IN (SELECT cvterm_id
-  FROM {cvterm} CVT INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
-  WHERE CV.name='KEGG_BRITE')";
-  $previous_db = tripal_db_set_active('chado'); // Use chado database
-  $success = db_query($sql, $analysis_id);
-  tripal_db_set_active($previous_db); // Use drupal database
+  $sql = "
+    DELETE FROM {analysisprop}
+    WHERE analysis_id = %d and
+      type_id IN (
+        SELECT cvterm_id
+        FROM {cvterm} CVT 
+          INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
+        WHERE CV.name='KEGG_BRITE')";
+  $success = chado_query($sql, $analysis_id);
   if (!$success) {
-    print "ERROR: Unable to clear previous analysisprop results.\n";
+    watchdog('tr_kegg_parse',"ERROR: Unable to clear previous analysisprop results.", array(), 'error'); 
     exit;
   }
 
   // iterate through the files in the directory
-  while ($file = readdir($dir_handle)) {
-
-    if (preg_match("/^.*\.keg/", $file)) {
-      // Update the progress
-      if ($no_file % $interval == 0) {
-        $percentage = (int) ($no_file / $total_files * 100);
-        tripal_job_set_progress($job_id, $percentage);
-        print $percentage . "%\r";
-      }
-      $no_file ++;
+  while ($file = readdir($dir_handle)) {        
+    
+    if (preg_match("/^.*\.keg/", $file)) {     
+      $no_file++;
        
       # $heirarchy variable will be set in tripal_analysis_kegg_parse_kegg_file()
       $results = tripal_analysis_kegg_parse_kegg_file("$hierdir/$file", $heirarchy,
-          $analysis_id, $base_path, $query_re, $query_type, $query_uniquename, $log);
+          $analysis_id, $base_path, $query_re, $query_type, $query_uniquename, $no_file, 
+          $total_files);
 
       # add the item to the database
       if (count($results) > 0) {
-        print "\nSaving results for '$heirarchy'\n";
-
 
         // Get type_id for the BRITE term
-        $previous_db = tripal_db_set_active('chado'); // Use chado database
-        $sql = "SELECT cvterm_id
-        FROM {cvterm} CVT
-        INNER JOIN CV ON CVT.cv_id = CV.cv_id
-        WHERE CV.name = 'KEGG_BRITE' AND CVT.name = '%s'";
-        $brite_cvterm_id = db_result(db_query($sql, $heirarchy));
+        $sql = "
+          SELECT cvterm_id
+          FROM {cvterm} CVT
+            INNER JOIN CV ON CVT.cv_id = CV.cv_id
+          WHERE CV.name = 'KEGG_BRITE' AND CVT.name = '%s'
+        ";
+        $brite_cvterm_id = db_result(chado_query($sql, $heirarchy));
         if (!$brite_cvterm_id) {
-          print "ERROR: Cannot find cvterm for '$heirarchy'.\n";
+          watchdog('tr_kegg_parse', "ERROR: Cannot find cvterm for '%heirarchy'", 
+            array('%heirarchy' => $heirarchy), 'error');
           exit;
         }
 
@@ -107,7 +91,6 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
         // to make display a bit easier on the web using CSS, the array
         // will be reformated within a <ul> HTML heirarchy and stored
         // in the analysisprop table.
-        $i = 0;
         $content = '<ul>';
         tripal_analysis_kegg_array2list($results, $content, $i);
         $content .= '</ul>';
@@ -116,32 +99,34 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
         $content = preg_replace("/\'/", "&#39;", $content);
 
         // Insert the value
-        $sql = "INSERT INTO {analysisprop} (analysis_id, type_id, value)
-        VALUES (%d, %d, '%s')";
-
-        if (!db_query($sql, $analysis_id, $brite_cvterm_id, $content)) {
-          print "ERROR: Cannot add '$heirarchy' results to the database.\n";
+        $values = array(
+          'analysis_id' => $analysis_id,
+          'type_id' => $brite_cvterm_id,
+          'value' => $content,
+        );
+        $options = array('statement_name' => 'ins_analysisprop_antyva');
+        $success = tripal_core_chado_insert('analysisprop', $values, $options);
+        if (!$success) {
+          watchdog('tr_kegg_parse',"ERROR: Cannot add '%heirarchy' results to the database.",
+            array('%heirarchy' => $heirarchy), 'error');
           exit;
         }
-        tripal_db_set_active($previous_db); // Use drupal database
-
-
       }
     }
-  }
-
-  tripal_job_set_progress($job_id, 100);
+  }  
+    
   closedir($dir_handle);
 
   // If user input a file, remove decompressed files after parsing
   if (is_file($hierfile)) {
     $stderr = shell_exec("rm -r $data_dir;");
-    print "$stderr\n";
+    if($stderr) {
+      watchdog('tr_kegg_parse', "ERROR: %err", array('%err' => $stderr), 'error');
+    }
   }
-   
-  print "Done.\nSuccessful and failed entries have been saved in the log file:\n $logfile\n";
-  fwrite($log, "\n");
-  fclose($log);
+
+  tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files);
+  print "\nDone.\n";
   return;
 }
 /**
@@ -173,10 +158,7 @@ function tripal_analysis_kegg_array2list($array, &$content, &$i) {
  * generated and saved to analysisfeature and analysisfeatureprop tables.
  */
 function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
-    $base_path, $query_re, $query_type, $query_uniquename, $log) {
-
-  print "Parsing $file\n";
-  fwrite($log, "Parsing $file\n");
+    $base_path, $query_re, $query_type, $query_uniquename, $no_file, $total_files) {
 
   $filepos = 0;
 
@@ -184,9 +166,15 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
   $handle = fopen($file, 'r');
   $heirarchy = '';
   $heirarchy_id = '';
+  $filesize = filesize($file);
+  $intv_read = 0; 
+
+  
   while ($line = fgets($handle)) {
     $filepos += strlen($line);
-    $line = trim($line);
+    $intv_read += strlen($line);
+    $line = trim($line);    
+    tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files); 
 
     // the .keg files represtend the KEGG BRITE Functional heirarchies.  These
     // heirarchies begin with a ko
@@ -214,19 +202,20 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
           'namespace' => 'KEGG_BRITE',
           'is_obsolete' => 0,
       );
-      fwrite($log, "Adding term: '$heirarchy' ($heirarchy_id)\n");
       $cvterm = tripal_cv_add_cvterm($brite_term, 'KEGG_BRITE', 0, 0, 'KEGG_BRITE');
-//print_r($cvterm);
       if (!$cvterm) {
-        fwrite($log, "Failed.  Cannot add cvterm '$heirarchy'\n");
+        watchdog('tr_kegg_parse', "Failed.  Cannot add cvterm '%heirarchy'.",
+          array('%heirarchy', $heirarchy), 'error');        
         return;
       }
 
       // now that we have the file type we can recurse
-      $next = tripal_analysis_kegg_get_next_line($handle, $filepos, $log);
+      $next = tripal_analysis_kegg_get_next_line($handle, $filepos, $filesize, 
+        $intv_read, $no_file, $total_files);
+              
       $results = tripal_analysis_kegg_recurse_heir($handle, $next, $query_re,
           $query_type, $query_uniquename, $base_path, $analysis_id, $heirarchy,
-          $filepos, $log);
+          $filepos, $filesize, $intv_read, $no_file, $total_files);
     }
   }
   fclose($handle);
@@ -238,7 +227,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$heirarchy, $analysis_id,
  */
 function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
     $query_type, $query_uniquename, $base_path, $analysis_id,
-    $heirarchy, &$filepos, $log) {
+    $heirarchy, &$filepos, $filesize, &$intv_read, $no_file, $total_files) {
   $results = array();
 
   // get the current level and the value
@@ -249,11 +238,10 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
   // now get the next line to see what is coming next.  If the
   // next level is greater then recurse immediately.
   $prevpos = $filepos;
-  while ($next = tripal_analysis_kegg_get_next_line($handle, $filepos, $log)) {
+  while ($next = tripal_analysis_kegg_get_next_line($handle, $filepos, $filesize, $intv_read, $no_file, $total_files)) {
     $next_level = $next[0];
     $next_value = $next[1];
     $next_pathway = $next[2];
-    print ".";
 
     // if we have a pathway from our current line and our next line does
     // not then that means we are traveling down the heirarcical tree in the
@@ -269,7 +257,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
     // check this line to see if it has a feature we need to keep
     $ret = tripal_analysis_kegg_check_line_handle_feature($query_re,
         $query_type, $query_uniquename, $base_path, $analysis_id,
-        $heirarchy, $value, $log, $pathway);
+        $heirarchy, $value, $pathway);
     if ($ret) {
       $results[] = $ret;
     }
@@ -279,7 +267,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
       // now recurse
       $ret = tripal_analysis_kegg_recurse_heir($handle, $next,
           $query_re, $query_type, $query_uniquename, $base_path, $analysis_id,
-          $heirarchy, $filepos, $log);
+          $heirarchy, $filepos, $filesize, $intv_read, $no_file, $total_files);
       if (count($ret) > 0) {
         $results[][$value] = $ret;
       }
@@ -306,7 +294,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
  *
  */
 
-function tripal_analysis_kegg_get_next_line($handle, &$filepos, $log) {
+function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$intv_read, $no_file, $total_files) {
   $good = 0;
   $level = '';
   $value = '';
@@ -315,6 +303,8 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $log) {
   // get the next line in the file
   $line = fgets($handle);
   $filepos += strlen($line);
+  $intv_read += strlen($line);
+  tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files);
 
   // we hit the end of the file, so exit with a NULL
   if (!$line) {
@@ -344,7 +334,8 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $log) {
         );
         $cvterm = tripal_cv_add_cvterm($pathway_term, 'KEGG_PATHWAY', 0, 0, 'KEGG_PATHWAY');
         if (!$cvterm) {
-          fwrite($log, "Failure to add KEGG PATHWAY term to cvterm table: ". $pathway['id'] ." " . $pathway['name'] .".\n");
+          watchdog('tr_kegg_parse', "ERROR: Failure to add KEGG PATHWAY term to cvterm table: %table %name.",
+            array('%table' => $pathway['id'], '%name' => $pathway['name']), 'error');
         } 
         else {
           $pathway_id = $cvterm->cvterm_id;
@@ -363,6 +354,8 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $log) {
     else {
       $line = fgets($handle);
       $filepos += strlen($line);
+      $intv_read += strlen($line);
+      tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files);
       // we hit the end of the file, so exit with a NULL
       if (!$line) {
         return NULL;
@@ -376,7 +369,7 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $log) {
  */
 function tripal_analysis_kegg_check_line_handle_feature($query_re,
     $query_type, $query_uniquename, $base_path, $analysis_id,
-    $heirarchy, $value, $log, $pathway) {
+    $heirarchy, $value, $pathway) {
 
   // extract the features that have been mapped to the KEGG IDs
   if (preg_match("/^(.*?);\s*(\<a.+)/", $value, $matches)) {
@@ -401,7 +394,8 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       );
       $cvterm = tripal_cv_add_cvterm($ko_term, 'KEGG_ORTHOLOGY', 0, 0, 'KEGG_ORTHOLOGY');
       if (!$cvterm) {
-        fwrite($log, "Failure to add KEGG ORTHOLOGY term to cvterm table: $ko_id $ko_name. Cannot add term to feature.\n");
+        watchdog('tr_kegg_parse', "Failure to add KEGG ORTHOLOGY term to cvterm table: %ko_id %ko_name. Cannot add term to feature",
+          array('%ko_id' => $ko_id, '%ko_name' => $ko_name), 'error');        
         return;
       } 
       else {
@@ -426,11 +420,14 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
 
     // now find the feature in chado
     $select = array();
+    $options = array();
     if ($query_uniquename) {
       $select['uniquename'] = $feature;
+      $options['statement_name'] = 'sel_feature_un';
     } 
     else {
       $select['name'] = $feature;
+      $options['statement_name'] = 'sel_feature_na';
     }
     if ($query_type) {
       $select['type_id'] = array(
@@ -439,16 +436,18 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
           ),
           'name' => $query_type,
       );
-    }
-
-    $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select);
+      $options['statement_name'] .= 'ty';
+    }    
+    $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select, $options);
 
     if (count($feature_arr) > 1) {
-      fwrite($log, "Ambiguous: '$feature' matches more than one feature and is being skipped.\n");
+      watchdog('tr_kegg_parse', "Failed (Ambiguous): '%feature' matches more than one feature and is being skipped.",
+        array('%feature' => $feature), 'error');
       return;
     }
     if (count($feature_arr) == 0) {
-      fwrite($log, "Failed: '$feature' cannot find a matching feature in the databasef.  RE: $query_re; LINE: $fname\n");
+      watchdog('tr_kegg_parse', "Failed: '%feature' cannot find a matching feature in the databasef.  RE: %query_re; LINE: %fname.", 
+        array('%feature' => $feature, '%query_re' => $query_re, '%fname' => $fname), 'error');
       return;
     }
     $feature_id = $feature_arr[0]->feature_id;
@@ -459,54 +458,71 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       // add the analysisfeature record if it doesn't already exist.
       $columns = array('analysisfeature_id');
       $values = array(
-          'feature_id' => $feature_id,
-          'analysis_id' => $analysis_id
+        'feature_id' => $feature_id,
+        'analysis_id' => $analysis_id
       );
-      $analysisfeature_arr = tripal_core_chado_select('analysisfeature', $columns, $values);
+      $options = array('statement_name' => 'sel_analysisfeature_fean');
+      $analysisfeature_arr = tripal_core_chado_select('analysisfeature', $columns, $values, $options);
       if (count($analysisfeature_arr) == 0) {
         if (tripal_core_chado_insert('analysisfeature', $values)) {
+          $options = array('statement_name' => 'ins_analysisfeature_fean');
           $analysisfeature_arr = tripal_core_chado_select('analysisfeature',
-              array('analysisfeature_id'), $values);
+              array('analysisfeature_id'), $values, $options);
         }
         else {
-          fwrite($log, "Failed: Cannot add analysis feature.  Feature Id: $feature_id\n");
+          watchdog('tr_kegg_parse', "Failed: Cannot add analysis feature.  Feature Id: %feature_id",
+            array('%feature_id' => $feature_id), 'error');
           return 0;
         }
       }
       $analysisfeature_id = $analysisfeature_arr[0]->analysisfeature_id;
 
       // add this term to the analysis feature properties
-      //print "Adding KEGG term '$ko_id' from $heirarchy to $feature\n";
-      fwrite($log, "Adding KEGG term '$ko_id' from $heirarchy to $feature. Term: '$ko_name'\n");
-
       tripal_feature_analysis_insert_property($analysis_id, $feature_id,
           NULL, $ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
-       
+      
       // add it as a feature property
       tripal_feature_insert_property($feature_id, $ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
 
       // associate this pathway with the feature
       if (count($pathway) > 0) {
-        //print "Adding KEGG term '". $pathway['name']."' from KEGG_PATHWAY to $feature\n";
-        fwrite($log, "Adding KEGG term '". $pathway['name'] ."' from KEGG_PATHWAY to $feature\n");
-        tripal_feature_analysis_insert_property($analysis_id, $feature_id,
+        tripal_feature_analysis_insert_property($analysis_id, $feature_id,        
             NULL, $pathway['name'], $pathway['name'], 0, 'KEGG_PATHWAY');
          
-        // add it as a feature property
-        tripal_feature_insert_property($feature_id, $pathway['name'], $pathway['name'], 0, 'KEGG_PATHWAY');
+        // add it as a feature property        
+        tripal_feature_insert_property($feature_id, $pathway['id'], $pathway['name'], 1, 'KEGG_PATHWAY');
       }
 
       // get the node ID of the feature if one exists
       $sql = "SELECT nid FROM {chado_feature} WHERE feature_id = %d";
-      $nid = db_result(db_query($sql, $feature_id));
+      $nid = db_result(chado_query($sql, $feature_id));
 
       // Add link to each matched feature
       if ($nid) {
-        $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$base_path/node/$nid\">"."$1"."</a>"."$2", $value);
+        // remove the domain from the base path to make the link relative
+        $root = preg_replace("/^http:\/\/(.*?)/", '', $base_path);
+        $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$root/node/$nid\">"."$1"."</a>"."$2", $value);
       }
       // if we have a feature match then add this to our results array
       return $value;
     }
   }
   return NULL;
+}
+
+/*
+ * 
+ */
+function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files){  
+  $interval = intval($filesize * 0.01);
+  if ($interval < 1) {
+    $interval = 1;
+  }  
+      
+  if ($intv_read >= $interval) {
+    $intv_read = 0;
+    $percentage = $no_file * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files);
+    print "Parsing KEGG file $no_file of $total_files (" . sprintf("%.2f", $percentage) . "%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
+    tripal_job_set_progress($job_id, $percentage);
+  } 
 }

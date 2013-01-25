@@ -636,10 +636,10 @@ function tripal_analysis_kegg_load_organism_kegg_summary($node) {
 
   // find analyses that have KEGG terms
   $sql = "
-  SELECT analysis_id
-  FROM {kegg_by_organism} KBO
-  WHERE organism_id = %d
-  ORDER BY analysis_id DESC
+    SELECT analysis_id
+    FROM {kegg_by_organism} KBO
+    WHERE organism_id = %d
+    ORDER BY analysis_id DESC
   ";
   $previous_db = tripal_db_set_active('chado');
   $results = db_query($sql, $organism->organism_id);
@@ -654,8 +654,8 @@ function tripal_analysis_kegg_load_organism_kegg_summary($node) {
     }
   }
   return array(
-      'has_results' => $has_results,
-      'form' => drupal_get_form('tripal_analysis_kegg_select_form', $node),
+    'has_results' => $has_results,
+    'form' => drupal_get_form('tripal_analysis_kegg_select_form', $node),
   );
 }
 /************************************************************************
