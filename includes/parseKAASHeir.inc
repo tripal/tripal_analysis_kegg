@@ -546,7 +546,7 @@ function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_
             
   if ($intv_read >= $interval) {
     $intv_read = 0;
-    $percentage = sprintf("%.4f", $no_file * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files));
+    $percentage = sprintf("%.4f", ($no_file -1) * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files));
    
     print "Parsing KEGG file $no_file of $total_files  ($percentage%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
     
