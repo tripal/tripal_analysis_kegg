@@ -517,15 +517,15 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
  * 
  */
 function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files){  
-  $interval = intval($filesize * 0.001);
+  $interval = $filesize * 0.001;
   if ($interval < 1) {
-    $interval = 1;
+    $interval = $filesize;
   }  
       
   if ($intv_read >= $interval) {
     $intv_read = 0;
     $percentage = $no_file * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files);
-    print "Parsing KEGG file $no_file of $total_files (" . sprintf("%.2f", $percentage) . "%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
+    print "Parsing KEGG file $no_file of $total_files (" . sprintf("%.4f", $percentage) . "%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
     tripal_job_set_progress($job_id, $percentage);
   } 
 }
