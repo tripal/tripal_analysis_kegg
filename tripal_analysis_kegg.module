@@ -262,20 +262,31 @@ function chado_analysis_kegg_validate($node, &$form) {
  *
 */
 function chado_analysis_kegg_insert($node) {
-  // insert the analysis
+
+  // get the analysis_id from the node before the call below
+  $analysis_id = $node->analysis_id;
+  
+  // insert the analysis. If the analysis already exist then this
+  // call will link it to a new Drupa node.
   chado_analysis_insert($node);
-
-  // set the type for this analysis
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_type', 'tripal_analysis_kegg');
-
-  // now add in the remaining settings as a single property but separated by bars
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_settings', $node->hierfile);
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_re', $node->query_re);
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_type', $node->query_type);
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_uniquename', $node->query_uniquename);
-   
-  // Add a job if the user wants to parse the html output
-  chado_analysis_kegg_submit_job($node);
+  
+  // If this analysis already exists then don't recreate it in chado. This can happen
+  // when nodes are synced.  They already exist but Drupal doesn't know it and calls 
+  // this function.
+  if (!$analysis_id) {    
+  
+    // set the type for this analysis
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_type', 'tripal_analysis_kegg');
+  
+    // now add in the remaining settings as a single property but separated by bars
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_settings', $node->hierfile);
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_re', $node->query_re);
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_type', $node->query_type);
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_uniquename', $node->query_uniquename);
+     
+    // Add a job if the user wants to parse the html output
+    chado_analysis_kegg_submit_job($node);
+  }
 }
 /**
  *

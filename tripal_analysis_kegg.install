@@ -116,7 +116,7 @@ function tripal_analysis_kegg_requirements($phase) {
       if (!function_exists('tripal_create_moddir') || !function_exists('tripal_analysis_register_child')) {
          $requirements ['tripal_analysis_kegg'] = array(
             'title' => "tripal_analysis_kegg",
-            'value' => "error. Some required modules are just being installed. Please try again.",
+            'value' => "Installation Error. Some required modules are not installed. Please install missing modules and try again.",
             'severity' => REQUIREMENT_ERROR,
          );
       }
