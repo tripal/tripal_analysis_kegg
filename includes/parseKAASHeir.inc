@@ -148,7 +148,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     }
   }
 
-  tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files);
+  tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files);
   print "\nDone.\n";
   return;
 }
