@@ -17,6 +17,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
   }
   
   // prepare the statement we'll use later to get the node id of the feature
+  // because this is a prepare on the Drupal database we don't use the Tripal API
   $sql = "PREPARE get_feature_nid (int) AS 
           SELECT nid FROM {chado_feature} WHERE feature_id = \$1";
   if (!db_query($sql)) {
