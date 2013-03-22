@@ -16,6 +16,19 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
       exit;  
   }
   
+  // begin the transaction
+  tripal_db_start_transaction();
+      
+  // if we cannot get a connection then let the user know the loading will be slow
+  if (!$connection) {
+     print "A persistant connection was not obtained. Loading will be slow\n";
+  }
+  else {
+     print "\nNOTE: Loading of this KEGG heir file is performed using a database transaction. \n" .
+           "If the load fails or is terminated prematurely then the entire set of \n" .
+           "insertions/updates is rolled back and will not be found in the database\n\n";
+  }
+  
   // prepare the statement we'll use later to get the node id of the feature
   // because this is a prepare on the Drupal database we don't use the Tripal API
   $sql = "PREPARE get_feature_nid (int) AS 
@@ -148,9 +161,10 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
       watchdog('tr_kegg_parse', "ERROR: %err", array('%err' => $stderr), 'error');
     }
   }
-
-  tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files);
-  print "\nDone.\n";
+ 
+  // commit the transaction
+  tripal_db_commit_transaction();
+  print "\nDone\n";
   return;
 }
 /**
@@ -192,14 +206,15 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id,
   $hierarchy_id = '';
   $filesize = filesize($file);
   $intv_read = 0; 
-  $matches = array();  
+  $matches = array();
+  $filename = preg_replace('/^.*\/(.*)$/','\1', $file);  
   
   while ($line = fgets($handle)) {
     $filepos += strlen($line);
     $intv_read += strlen($line);
     $line = trim($line);       
 
-    tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files); 
+    tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files, $filename); 
 
     // the .keg files represtend the KEGG BRITE Functional heirarchies.  These
     // heirarchies begin with a ko
@@ -237,11 +252,11 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id,
 
       // now that we have the file type we can recurse
       $next = tripal_analysis_kegg_get_next_line($handle, $filepos, $filesize, 
-        $intv_read, $no_file, $total_files);
+        $intv_read, $no_file, $total_files, $filename);
               
       $results = tripal_analysis_kegg_recurse_heir($handle, $next, $query_re,
           $query_type, $query_uniquename, $base_path, $analysis_id, $hierarchy,
-          $filepos, $filesize, $intv_read, $no_file, $total_files);
+          $filepos, $filesize, $intv_read, $no_file, $total_files, $filename);
     }
   }
   fclose($handle);
@@ -253,7 +268,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id,
  */
 function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
     $query_type, $query_uniquename, $base_path, $analysis_id,
-    $hierarchy, &$filepos, $filesize, &$intv_read, $no_file, $total_files) {
+    $hierarchy, &$filepos, $filesize, &$intv_read, $no_file, $total_files, $file) {
   $results = array();
 
   // get the current level and the value
@@ -264,10 +279,10 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
   // now get the next line to see what is coming next.  If the
   // next level is greater then recurse immediately.
   $prevpos = $filepos;
-  while ($next = tripal_analysis_kegg_get_next_line($handle, $filepos, $filesize, $intv_read, $no_file, $total_files)) {
+  while ($next = tripal_analysis_kegg_get_next_line($handle, $filepos, $filesize, $intv_read, $no_file, $total_files, $file)) {
     $next_level = $next[0];
     $next_value = $next[1];
-    $next_pathway = $next[2];
+    $next_pathway = $next[2];    
 
     // if we have a pathway from our current line and our next line does
     // not then that means we are traveling down the heirarcical tree in the
@@ -277,7 +292,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
       $next_pathway['id'] = $pathway['id'];
       $next_pathway['name'] = $pathway['name'];
       $next_pathway['type_id'] = $pathway['type_id'];
-      $next[2] = $next_pathway;
+      $next[2] = $next_pathway;      
     }
 
     // check this line to see if it has a feature we need to keep
@@ -293,7 +308,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
       // now recurse
       $ret = tripal_analysis_kegg_recurse_heir($handle, $next,
           $query_re, $query_type, $query_uniquename, $base_path, $analysis_id,
-          $hierarchy, $filepos, $filesize, $intv_read, $no_file, $total_files);
+          $hierarchy, $filepos, $filesize, $intv_read, $no_file, $total_files, $file);
       if (count($ret) > 0) {
         $results[][$value] = $ret;
       }
@@ -320,7 +335,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
  *
  */
 
-function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$intv_read, $no_file, $total_files) {
+function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$intv_read, $no_file, $total_files, $filename) {
   $good = 0;
   $level = '';
   $value = '';
@@ -330,7 +345,7 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$int
   $line = fgets($handle);
   $filepos += strlen($line);
   $intv_read += strlen($line);
-  tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files);
+  tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files, $filename);
 
   // we hit the end of the file, so exit with a NULL
   if (!$line) {
@@ -346,19 +361,21 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$int
     if ($level and $value) {
 
       // check to see if this is a line identifying a KEGG pathway
-      if (preg_match("/^(\d+)\s+(.*?)\s+\[PATH:.*$/", $value, $pathmatch) > 0) {
-        $pathway['id'] = $pathmatch[1];
+      //print "$value\n";
+      if (preg_match("/^(\d+)\s+(.*?)\s+\[PATH:.*>(.*)<\/a>]$/", $value, $pathmatch) > 0) {
+        $pathway['id'] = $pathmatch[3];
         $pathway['name'] = $pathmatch[2];
+        $pathway['def'] = $pathmatch[2];
 
         // add the pathway as a cvterm
         $pathway_term = array(
             'id' => $pathway['id'],
             'name' => $pathway['name'],
-            'def' => $pathway['name'],
+            'def' => $pathway['def'],
             'namespace' => 'KEGG_PATHWAY',
             'is_obsolete' => 0,
         );
-        $cvterm = tripal_cv_add_cvterm($pathway_term, 'KEGG_PATHWAY', 0, 0, 'KEGG_PATHWAY');
+        $cvterm = tripal_cv_add_cvterm($pathway_term, 'KEGG_PATHWAY', 0, 1, 'KEGG_PATHWAY');
         if (!$cvterm) {
           watchdog('tr_kegg_parse', "ERROR: Failure to add KEGG PATHWAY term to cvterm table: %table %name.",
             array('%table' => $pathway['id'], '%name' => $pathway['name']), 'error');
@@ -381,7 +398,7 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$int
       $line = fgets($handle);
       $filepos += strlen($line);
       $intv_read += strlen($line);
-      tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files);
+      tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, $intv_read, $no_file, $total_files, $filename);
       // we hit the end of the file, so exit with a NULL
       if (!$line) {
         return NULL;
@@ -405,23 +422,24 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
 
     // get the KEGG ortholog and add it as a term
     $ko_type_id = '';
-    $ko_name = '';
+    $ko_def = '';
     $ko_id = '';
 
     if (preg_match("/^<a.*>(K.*?)<\/a>\s+(.*)$/", $keggterm, $matchparts)) {
       $ko_id = $matchparts[1];
-      $ko_name = $matchparts[2];
+      $ko_def = $matchparts[2];
+      $ko_name = $ko_def;
       $ko_term = array(
           'id' => $ko_id,
-          'name' => $ko_id,
-          'def' => $ko_name,
+          'name' => $ko_name,
+          'def' => $ko_def,
           'namespace' => 'KEGG_ORTHOLOGY',
           'is_obsolete' => 0,
       );
-      $cvterm = tripal_cv_add_cvterm($ko_term, 'KEGG_ORTHOLOGY', 0, 0, 'KEGG_ORTHOLOGY');
+      $cvterm = tripal_cv_add_cvterm($ko_term, 'KEGG_ORTHOLOGY', 0, 1, 'KEGG_ORTHOLOGY');
       if (!$cvterm) {
-        watchdog('tr_kegg_parse', "Failure to add KEGG ORTHOLOGY term to cvterm table: %ko_id %ko_name. Cannot add term to feature",
-          array('%ko_id' => $ko_id, '%ko_name' => $ko_name), 'error');        
+        watchdog('tr_kegg_parse', "Failure to add KEGG ORTHOLOGY term to cvterm table: %ko_id %ko_def. Cannot add term to feature",
+          array('%ko_id' => $ko_id, '%ko_def' => $ko_def), WATCHDOG_ERROR);        
         return;
       } 
       else {
@@ -504,19 +522,28 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       $analysisfeature_id = $analysisfeature_arr[0]->analysisfeature_id;
 
       // add this term to the analysis feature properties
-      tripal_feature_analysis_insert_property($analysis_id, $feature_id,
-          NULL, $ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
+      $success = tripal_feature_analysis_insert_property($analysis_id, $feature_id,
+        NULL, $ko_name, $ko_def, 0, 'KEGG_ORTHOLOGY');
+      if (!$success) {
+          watchdog('tr_kegg_parse', "Failed: Could not add orthlog to feature.  Feature Id: %feature_id, Ortholog: '%ortholog'",
+            array('%feature_id' => $feature_id, '%ortholog' => $ko_id), 'warning');
+      }
       
-      // add it as a feature property
-      tripal_feature_insert_property($feature_id, $ko_id, $ko_name, 0, 'KEGG_ORTHOLOGY');
-
+      // add the ortholog as a feature_dbxref
+      tripal_feature_add_cvterm($feature_id, 'KEGG_ORTHOLOGY', $ko_name); 
+      
+      
       // associate this pathway with the feature
-      if (count($pathway) > 0) {
-        tripal_feature_analysis_insert_property($analysis_id, $feature_id,        
-            NULL, $pathway['name'], $pathway['name'], 0, 'KEGG_PATHWAY');
+      if (count($pathway) > 0) {        
+        $success = tripal_feature_analysis_insert_property($analysis_id, $feature_id,               
+          NULL, $pathway['name'], $pathway['def'], 0, 'KEGG_PATHWAY');            
+        if (!$success) {
+          watchdog('tr_kegg_parse', "Failed: Could not add pathway to feature.  Feature Id: %feature_id, Pathway: '%pathway'",
+            array('%feature_id' => $feature_id, '%pathway' => $pathway['name']), 'warning');
+        }
          
-        // add it as a feature property        
-        tripal_feature_insert_property($feature_id, $pathway['id'], $pathway['name'], 1, 'KEGG_PATHWAY');
+        // add the pathway as a feature_dbxref
+        tripal_feature_add_cvterm($feature_id, 'KEGG_PATHWAY', $pathway['name']);           
       }
 
       // get the node ID of the feature if one exists
@@ -538,7 +565,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
 /*
  * 
  */
-function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files){ 
+function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_read, $no_file, $total_files, $filename){ 
   static $last_percent = 0; 
   $interval = $filesize * 0.001;
   if ($interval < 1) {
@@ -547,9 +574,9 @@ function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_
             
   if ($intv_read >= $interval) {
     $intv_read = 0;
-    $percentage = sprintf("%.4f", ($no_file -1) * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files));
+    $percentage = sprintf("%.4f", ($no_file - 1) * (100 / $total_files) + ($filepos / $filesize) * (100 / $total_files));
    
-    print "Parsing KEGG file $no_file of $total_files  ($percentage%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
+    print "Parsing KEGG file, $filename, $no_file of $total_files  ($percentage%). Memory: " . number_format(memory_get_usage()) . " bytes\r";
     
     // we don't want to update the databe
     if($percentage - $last_percent > 1) {

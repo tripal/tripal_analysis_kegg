@@ -27,7 +27,7 @@ function tripal_analysis_kegg_install() {
       'drawn pathway maps representing our knowledge on the molecular interaction ' .
       'and reaction networks.',
       'http://www.genome.jp/kegg/pathway.html',
-      'http://www.genome.jp/dbget-bin/www_bget?pathway:map');
+      'http://www.genome.jp/kegg-bin/mark_pathway_www?@');
    tripal_db_add_db('KEGG_BRITE', 'KEGG BRITE is a collection of hierarchical ' .
       'classifications from KEGG.',
       'http://www.genome.jp/kegg/brite.html',
@@ -69,7 +69,27 @@ function tripal_analysis_kegg_install() {
    );
 }
 /*******************************************************************************
+ * Change the URL prefix of the 'KEGG_PATHWAY' database
+ */
+function tripal_analysis_kegg_update_6101() {
+
+   // update the KEGG_PATHWAY db entry
+   tripal_db_add_db('KEGG_PATHWAY', 'KEGG PATHWAY is a collection of manually ' .
+      'drawn pathway maps representing our knowledge on the molecular interaction ' .
+      'and reaction networks.',
+      'http://www.genome.jp/kegg/pathway.html',
+      'http://www.genome.jp/kegg-bin/mark_pathway_www?@',
+      TRUE);
+
+   $ret = array(
+      '#finished' => 1,
+   );
+   
+   return $ret;
+}
+/*******************************************************************************
  * Provide update script for adding new cvterms
+ *
  */
 function tripal_analysis_kegg_update_6000() {
 

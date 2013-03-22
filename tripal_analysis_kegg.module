@@ -118,13 +118,14 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
     ";
     // List all BRITE terms on the left. The SQL statement below can use
     // the older method for CVTerms with BRITE hierarchies or the newer method
-    $sql = "SELECT DISTINCT CVT.name, CVT.cvterm_id
-    FROM {cvterm} CVT
-    INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
-    INNER JOIN cv CV on CV.cv_id = CVT.cv_id
-    WHERE AP.analysis_id = %d AND
-    (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
-    ORDER BY CVT.cvterm_id";
+    $sql = "
+      SELECT DISTINCT CVT.name, CVT.cvterm_id
+      FROM {cvterm} CVT
+        INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
+        INNER JOIN cv CV on CV.cv_id = CVT.cv_id
+      WHERE AP.analysis_id = %d AND
+        (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
+      ORDER BY CVT.cvterm_id";
     $previous_db = tripal_db_set_active('chado');
     $result = db_query($sql, $analysis_id);
     tripal_db_set_active($previous_db);
@@ -149,13 +150,14 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
     $brite_term = db_result(db_query($sql, $type_id));
 
     // Get BRITE hierarchy tree
-    $sql = "SELECT value
-    FROM {analysisprop} AP
-    INNER JOIN CVterm CVT on AP.type_id = CVT.cvterm_id
-    INNER JOIN CV on CVT.cv_id = CV.cv_id
-    WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = '%s'
-    AND AP.analysis_id = %d";
-
+    $sql = "
+      SELECT value
+      FROM {analysisprop} AP
+        INNER JOIN CVterm CVT on AP.type_id = CVT.cvterm_id
+        INNER JOIN CV on CVT.cv_id = CV.cv_id
+      WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = '%s'
+       AND AP.analysis_id = %d
+    ";
     $result = db_fetch_object(db_query($sql, $brite_term, $analysis_id));
     tripal_db_set_active($previous_db);
     $content .= "<div class=\"tripal_kegg_brite_tree\" id=\"tripal_kegg_brite_tree_$type_id\">$result->value</div>";
@@ -687,13 +689,15 @@ function tripal_analysis_kegg_full_report($analysis_id) {
   // have two queries, one for the new method and one for backwards
   // compatiblity.  The data, however, is still stored in the same way.
   // the SQL below will pull both forms:
-  $sql = "SELECT CVT.name, CVT.cvterm_id
-  FROM {cvterm} CVT
-  INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
-  INNER JOIN cv CV on CVT.cv_id = CV.cv_id
-  WHERE AP.analysis_id = %d
-  AND (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
-  ORDER BY CVT.cvterm_id";
+  $sql = "
+    SELECT CVT.name, CVT.cvterm_id
+    FROM {cvterm} CVT
+      INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
+      INNER JOIN cv CV on CVT.cv_id = CV.cv_id
+    WHERE AP.analysis_id = %d
+      AND (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
+    ORDER BY CVT.cvterm_id
+  ";
   $previous_db = tripal_db_set_active('chado');
   $result = db_query($sql, $analysis_id);
   tripal_db_set_active($previous_db);
@@ -744,29 +748,83 @@ function tripal_analysis_kegg_organism_results($node) {
 function tripal_analysis_kegg_load_feature_terms($feature) {
 
   $feature_id = $feature->feature_id;
+  $results = array();
    
   // Get the KEGG orthlogs for this feature
   $values = array(
-      'feature_id' => $feature_id,
-      'type_id' => array(
-          'cv_id' => array(
-              'name' => 'KEGG_ORTHOLOGY'
-          ),
+    'feature_id' => $feature_id,
+    'cvterm_id' => array(
+      'cv_id' => array(
+        'name' => 'KEGG_ORTHOLOGY'
       ),
+    ),
   );
-  $results['KO'] = tripal_core_generate_chado_var('featureprop', $values);
+  $options = array('return_array' => 1);
+  $results['KO'] = tripal_core_generate_chado_var('feature_cvterm', $values, $options);
 
   // Get the KEGG pathways for this feature
   $values = array(
-      'feature_id' => $feature_id,
-      'type_id' => array(
-          'cv_id' => array(
-              'name' => 'KEGG_PATHWAY'
-          ),
+    'feature_id' => $feature_id,
+    'cvterm_id' => array(
+      'cv_id' => array(
+         'name' => 'KEGG_PATHWAY'
       ),
+    ),
   );
-  $results['PATH'] = tripal_core_generate_chado_var('featureprop', $values);
-
+  $results['PATH'] = tripal_core_generate_chado_var('feature_cvterm', $values, $options);
+  
+  // unfortunatly, these terms were stored in the featureprop table at one point
+  // in the life of this module.  This was incorrect.  However, for backwards
+  // compatibility we will look for orthologs and pathways stored in the featureprop
+  // table and add those to our list.
+  $values = array(
+    'feature_id' => $feature_id,
+    'type_id' => array(
+        'cv_id' => array(
+            'name' => 'KEGG_ORTHOLOGY'
+        ),
+    ),
+  );
+  $props = tripal_core_generate_chado_var('featureprop', $values, $options);
+  foreach ($props as $prop) {
+    $found = 0;
+    foreach ($results['KO'] as $fcvterm) {
+      if ($prop->type_id->cvterm_id == $fcvterm->cvterm_id->cvterm_id) {
+        $found = 1;
+      }      
+    }
+    if (!$found) {
+      // we did not find the term in the feature_cvterm records so change this property
+      // to have a cvterm_id rather than a type_id and mark this as found        
+      $prop->cvterm_id = $prop->type_id;
+      $results['KO'][] = $prop;
+    }
+  }
+  
+  // now do the same for the pathways
+  $values = array(
+    'feature_id' => $feature_id,
+    'type_id' => array(
+        'cv_id' => array(
+            'name' => 'KEGG_PATHWAY'
+        ),
+    ),
+  );
+  $props = tripal_core_generate_chado_var('featureprop', $values, $options);
+  foreach ($props as $prop) {
+    $found = 0;
+    foreach ($results['PATH'] as $fcvterm) {
+      if ($prop->type_id->cvterm_id == $fcvterm->cvterm_id->cvterm_id) {
+        $found = 1;
+      }      
+    }
+    if (!$found) {
+      // we did not find the term in the feature_cvterm records so change this property
+      // to have a cvterm_id rather than a type_id and mark this as found        
+      $prop->cvterm_id = $prop->type_id;
+      $results['PATH'][] = $prop;
+    }
+  }
   return $results;
 }
 

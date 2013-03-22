@@ -66,16 +66,16 @@ if ($results[KO] or $results[PATH] or $results_v0_3) {
      $i = 0;
      ?>
      <div id="tripal_feature-kegg-box" class="tripal_feature-box tripal-info-box">
-        <div class="tripal_feature-info-box-title tripal-info-box-title">KEGG Assignments</div>
+        <div class="tripal_feature-info-box-title tripal-info-box-title">KEGG Terms</div>
         <div class="tripal_feature-info-box-desc tripal-info-box-desc">
            <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Pathways</div><?php
            if($results['PATH']){
-              $header = array('KEGG Pathway','Definition');
+              $header = array('KEGG Pathway','Name');
               $rows = array();
-              foreach($pathways as $prop){               
-                 $urlprefix = $prop->type_id->dbxref_id->db_id->urlprefix;
-                 $accession = $prop->type_id->dbxref_id->accession;
-                 $cvname = $prop->type_id->name;
+              foreach($pathways as $term){ 
+                 $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
+                 $accession = $term->cvterm_id->dbxref_id->accession;
+                 $cvname = $term->cvterm_id->name;
                  if($urlprefix){
                     $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
                  }
@@ -91,20 +91,19 @@ if ($results[KO] or $results[PATH] or $results_v0_3) {
            <br><br>
            <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Orthologs</div><?php
            if($results['KO']){
-              $header = array('KEGG Ortholog','Definition');
+              $header = array('KEGG Ortholog','Name');
               $rows = array();
-              foreach($orthologs as $prop){ 
+              foreach($orthologs as $term){ 
                 // add in the definition (it's a text column);
-                $prop = tripal_core_expand_chado_vars($prop,'field','cvterm.definition');
-                $urlprefix = $prop->type_id->dbxref_id->db_id->urlprefix;
-                $accession = $prop->type_id->dbxref_id->accession;
-                $definition = $prop->type_id->definition;
+                $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
+                $accession = $term->cvterm_id->dbxref_id->accession;
+                $cvname = $term->cvterm_id->name;
                 if($urlprefix){
                    $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
                 }
                 $rows[] = array(
                    $accession,
-                   $definition
+                   $cvname
                 );
               }
               print theme('table', $header, $rows); 
