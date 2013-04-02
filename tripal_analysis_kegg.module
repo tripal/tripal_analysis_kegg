@@ -121,8 +121,8 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
     $sql = "
       SELECT DISTINCT CVT.name, CVT.cvterm_id
       FROM {cvterm} CVT
-        INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
-        INNER JOIN cv CV on CV.cv_id = CVT.cv_id
+        INNER JOIN {analysisprop} AP ON CVT.cvterm_id = AP.type_id
+        INNER JOIN {cv} CV on CV.cv_id = CVT.cv_id
       WHERE AP.analysis_id = %d AND
         (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
       ORDER BY CVT.cvterm_id";
@@ -153,8 +153,8 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
     $sql = "
       SELECT value
       FROM {analysisprop} AP
-        INNER JOIN CVterm CVT on AP.type_id = CVT.cvterm_id
-        INNER JOIN CV on CVT.cv_id = CV.cv_id
+        INNER JOIN {CVterm} CVT on AP.type_id = CVT.cvterm_id
+        INNER JOIN {CV} on CVT.cv_id = CV.cv_id
       WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = '%s'
        AND AP.analysis_id = %d
     ";
@@ -579,7 +579,7 @@ function theme_tripal_analysis_kegg_search_index($node) {
     // Find cvterm_id for 'kegg_brite_data'
     $sql = "SELECT cvterm_id
     FROM {cvterm} CVT
-    INNER JOIN cv ON cv.cv_id = CVT.cv_id
+    INNER JOIN {cv} ON cv.cv_id = CVT.cv_id
     WHERE cv.name = 'tripal'
     AND CVT.name = '%s'";
     $previous_db = tripal_db_set_active('chado');
@@ -588,7 +588,7 @@ function theme_tripal_analysis_kegg_search_index($node) {
     // Get analysis id
     $sql = "SELECT analysis_id AS aid
     FROM {analysisfeature} AF
-    INNER JOIN analysisfeatureprop AFP ON AF.analysisfeature_id = AFP.analysisfeature_id
+    INNER JOIN {analysisfeatureprop} AFP ON AF.analysisfeature_id = AFP.analysisfeature_id
     WHERE feature_id = %d
     AND AFP.type_id = %d
     GROUP BY analysis_id";
@@ -619,7 +619,7 @@ function theme_tripal_analysis_kegg_search_index($node) {
         // Show Kegg results
         $sql = "SELECT AFP.value AS afpvalue
         FROM {analysisfeatureprop} AFP
-        INNER JOIN analysisfeature AF on AF.analysisfeature_id = AFP.analysisfeature_id
+        INNER JOIN {analysisfeature} AF on AF.analysisfeature_id = AFP.analysisfeature_id
         WHERE AF.analysis_id = %d
         AND AF.feature_id = %d
         ";
@@ -692,8 +692,8 @@ function tripal_analysis_kegg_full_report($analysis_id) {
   $sql = "
     SELECT CVT.name, CVT.cvterm_id
     FROM {cvterm} CVT
-      INNER JOIN analysisprop AP ON CVT.cvterm_id = AP.type_id
-      INNER JOIN cv CV on CVT.cv_id = CV.cv_id
+      INNER JOIN {analysisprop} AP ON CVT.cvterm_id = AP.type_id
+      INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
     WHERE AP.analysis_id = %d
       AND (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
     ORDER BY CVT.cvterm_id
