@@ -126,9 +126,9 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
       WHERE AP.analysis_id = %d AND
         (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
       ORDER BY CVT.cvterm_id";
-    $previous_db = tripal_db_set_active('chado');
-    $result = db_query($sql, $analysis_id);
-    tripal_db_set_active($previous_db);
+
+    $result = chado_query($sql, $analysis_id);
+
     while ($brite_term = db_fetch_object($result)) {
       $url = url("brite/$analysis_id/$brite_term->cvterm_id/1");
       $content .= "<li class=\"tripal_kegg_brite_terms\"><a onclick=\"return tripal_update_brite(".
@@ -145,9 +145,9 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
   } 
   else {
     // Get BRITE term from cvterm table
-    $previous_db = tripal_db_set_active('chado');
+    
     $sql = 'SELECT name FROM {cvterm} WHERE cvterm_id=%d';
-    $brite_term = db_result(db_query($sql, $type_id));
+    $brite_term = db_result(chado_query($sql, $type_id));
 
     // Get BRITE hierarchy tree
     $sql = "
@@ -158,8 +158,8 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
       WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = '%s'
        AND AP.analysis_id = %d
     ";
-    $result = db_fetch_object(db_query($sql, $brite_term, $analysis_id));
-    tripal_db_set_active($previous_db);
+    $result = db_fetch_object(chado_query($sql, $brite_term, $analysis_id));
+    
     $content .= "<div class=\"tripal_kegg_brite_tree\" id=\"tripal_kegg_brite_tree_$type_id\">$result->value</div>";
   }
 
@@ -582,8 +582,8 @@ function theme_tripal_analysis_kegg_search_index($node) {
     INNER JOIN {cv} ON cv.cv_id = CVT.cv_id
     WHERE cv.name = 'tripal'
     AND CVT.name = '%s'";
-    $previous_db = tripal_db_set_active('chado');
-    $brite_id = db_result(db_query($sql, 'kegg_brite_data'));
+    
+    $brite_id = db_result(chado_query($sql, 'kegg_brite_data'));
 
     // Get analysis id
     $sql = "SELECT analysis_id AS aid
@@ -594,8 +594,8 @@ function theme_tripal_analysis_kegg_search_index($node) {
     GROUP BY analysis_id";
     $feature = $node->feature;
     $feature_id = $feature->feature_id;
-    $hasResult = db_result(db_query($sql, $feature_id, $brite_id));
-    $result = db_query($sql, $feature->feature_id, $brite_id);
+    $hasResult = db_result(chado_query($sql, $feature_id, $brite_id));
+    $result = chado_query($sql, $feature->feature_id, $brite_id);
 
     // Show kegg result ORDER BY time
     if ($hasResult) { // If there is any result, show expandable box
@@ -606,12 +606,12 @@ function theme_tripal_analysis_kegg_search_index($node) {
         $sql = "SELECT name, to_char(timeexecuted, 'MM-DD-YYYY') AS time
         FROM {analysis}
         WHERE analysis_id = %d";
-        $ana_details = db_fetch_object(db_query($sql, $ana->aid));
+        $ana_details = db_fetch_object(chado_query($sql, $ana->aid));
         // Find node id for the analysis
-        tripal_db_set_active($previous_db);
+        
         $ana_nid = db_result(db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = %d", $ana->aid));
         $ana_url = url("node/". $ana_nid);
-        $previous_db = tripal_db_set_active('chado');
+        
          
         // Show content
         $content .= "$ana_details->name";
@@ -623,13 +623,12 @@ function theme_tripal_analysis_kegg_search_index($node) {
         WHERE AF.analysis_id = %d
         AND AF.feature_id = %d
         ";
-        $kegg_results = db_query($sql, $ana->aid, $feature_id);
+        $kegg_results = chado_query($sql, $ana->aid, $feature_id);
         while ($afp = db_fetch_object($kegg_results)) {
           $content .= " $afp->afpvalue";
         }
       }
-    }
-    tripal_db_set_active($previous_db);
+    }    
     return $content;
   }
 }
@@ -654,9 +653,9 @@ function tripal_analysis_kegg_load_organism_kegg_summary($node) {
     WHERE organism_id = %d
     ORDER BY analysis_id DESC
   ";
-  $previous_db = tripal_db_set_active('chado');
-  $results = db_query($sql, $organism->organism_id);
-  tripal_db_set_active($previous_db);
+  
+  $results = chado_query($sql, $organism->organism_id);
+  
 
   # check to ensure we have access to at least one of the KEGG analyses
   $has_results = 0;
@@ -698,9 +697,7 @@ function tripal_analysis_kegg_full_report($analysis_id) {
       AND (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
     ORDER BY CVT.cvterm_id
   ";
-  $previous_db = tripal_db_set_active('chado');
-  $result = db_query($sql, $analysis_id);
-  tripal_db_set_active($previous_db);
+  $result = chado_query($sql, $analysis_id);
 
   if (db_result($result)) {
     return $content = tripal_analysis_kegg_brite($analysis_id, $type_id, 0);
@@ -904,9 +901,9 @@ function tripal_analysis_kegg_select_form(&$form_state = NULL, $node) {
   WHERE organism_id = %d
   ORDER BY analysis_id DESC
   ";
-  $previous_db = tripal_db_set_active('chado');
-  $results = db_query($sql, $node->organism->organism_id);
-  tripal_db_set_active($previous_db);
+  
+  $results = chado_query($sql, $node->organism->organism_id);
+  
 
   $analyses = array();
   $analyses[''] = '';
