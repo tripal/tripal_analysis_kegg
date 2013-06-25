@@ -186,9 +186,10 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
 /*******************************************************************************
  *  Provide a KEGG Analysis form
 */
-function chado_analysis_kegg_form($node) {
+function chado_analysis_kegg_form($node, $form_state) {
+	
   // add in the default fields
-  $form = chado_analysis_form($node);
+  $form = chado_analysis_form($node, $form_state);
 
   // set the defaults
   $kegg = $node->analysis->tripal_analysis_kegg;
@@ -500,33 +501,37 @@ function tripal_analysis_kegg_theme_registry_alter(&$info) {
 */
 function tripal_analysis_kegg_theme() {
   $path = drupal_get_path('module', 'tripal_analysis_kegg') . '/theme';
+  
   return array(
-      'tripal_analysis_kegg_search_index' => array(
-          'arguments' => array('node'),
-      ),
-      'tripal_analysis_kegg_search_result' => array(
-          'arguments' => array('node'),
-      ),
-      'tripal_organism_kegg_summary' => array(
-          'arguments' => array('node' => NULL),
-          'template' => 'tripal_organism_kegg_summary',
-          'path' => $path . '/tripal_organism',
-      ),
-      'tripal_feature_kegg_terms' => array(
-          'arguments' => array('node' => NULL),
-          'template' => 'tripal_feature_kegg_terms',
-          'path' => $path . '/tripal_feature',
-      ),
-      'tripal_analysis_kegg_base' => array(
-          'arguments' => array('node' => NULL),
-          'template' => 'tripal_analysis_kegg_base',
-          'path' => $path . '/tripal_analysis_kegg',
-      ), 
-      'tripal_analysis_kegg_report' => array(
-          'arguments' => array('node' => NULL),
-          'template' => 'tripal_analysis_kegg_report',
-          'path' => $path . '/tripal_analysis_kegg',
-      ),
+    'tripal_analysis_kegg_search_index' => array(
+      'arguments' => array('node'),
+    ),
+    'tripal_analysis_kegg_search_result' => array(
+      'arguments' => array('node'),
+    ),
+    'tripal_organism_kegg_summary' => array(
+      'arguments' => array('node' => NULL),
+      'template' => 'tripal_organism_kegg_summary',
+      'path' => $path . '/tripal_organism',
+    ),
+    'tripal_feature_kegg_terms' => array(
+      'arguments' => array('node' => NULL),
+      'template' => 'tripal_feature_kegg_terms',
+      'path' => $path . '/tripal_feature',
+    ),
+    'tripal_analysis_kegg_base' => array(
+      'arguments' => array('node' => NULL),
+      'template' => 'tripal_analysis_kegg_base',
+      'path' => $path . '/tripal_analysis_kegg',
+    ), 
+    'tripal_analysis_kegg_report' => array(
+      'arguments' => array('node' => NULL),
+      'template' => 'tripal_analysis_kegg_report',
+      'path' => $path . '/tripal_analysis_kegg',
+    ),
+    'chado_analysis_kegg_node_form' => array(
+      'arguments' => array('form'),
+    ),
   );
 }
 /**
@@ -940,4 +945,21 @@ function tripal_analysis_kegg_select_form(&$form_state = NULL, $node) {
   return $form;
 }
 
+/**
+ * 
+ * @param unknown_type $form
+ */
+function theme_chado_analysis_kegg_node_form($form) {
 
+  $properties_table = tripal_analysis_theme_node_form_properties($form);
+  $markup .= $properties_table;
+
+  $form['properties']['table'] = array(
+    '#type' => 'markup',
+    '#value' =>  $markup,
+    '#prefix' => '<div id="tripal-analysis-edit-properties-table">',
+    '#suffix' => '</div>',
+  );
+  $form['buttons']['#weight'] = 50;
+  return drupal_render($form);
+}
