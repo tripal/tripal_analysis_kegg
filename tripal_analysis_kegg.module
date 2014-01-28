@@ -277,10 +277,7 @@ function chado_analysis_kegg_insert($node) {
   // when nodes are synced.  They already exist but Drupal doesn't know it and calls 
   // this function.
   if (!$analysis_id) {    
-  
-    // set the type for this analysis
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_type', 'tripal_analysis_kegg');
-  
+    
     // now add in the remaining settings as a single property but separated by bars
     tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_settings', $node->hierfile);
     tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_re', $node->query_re);
@@ -329,9 +326,6 @@ function chado_analysis_kegg_delete($node) {
 function chado_analysis_kegg_update($node) {
   // insert the analysis
   chado_analysis_update($node);
-
-  // set the type for this analysis
-  tripal_analysis_update_property($node->analysis_id, 'analysis_type', 'tripal_analysis_kegg', 1);
 
   // now add in the remaining settings as a single property but separated by bars
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_settings', $node->hierfile, 1);
