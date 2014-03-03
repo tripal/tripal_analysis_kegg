@@ -43,64 +43,72 @@ function tripal_analysis_kegg_install() {
    tripal_cv_add_cv('KEGG_BRITE', 'Holds terms from the KEGG BRITE database.');
    tripal_cv_add_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
    
-   tripal_add_mview(
-      // view name
-      'kegg_by_organism',
-      // tripal module name
-      'kegg_by_organism',
-      // table name
-      'kegg_by_organism',
-      // table schema definition
-      'analysis_name character varying(255),
-       analysis_id integer,
-       organism_id integer',
-      // columns for indexing
-      'analysis_id,organism_id',
-      // SQL statement to populate the view
-      "SELECT DISTINCT A.name,A.analysis_id,F.organism_id
+   tripal_analysis_kegg_add_mview_kegg_by_organism ();
+}
+
+
+/**
+ * Creates a view showing the kegg results for each organism.
+ *
+ * @ingroup tripal_analysis
+ */
+function tripal_analysis_kegg_add_mview_kegg_by_organism() {
+  $view_name = 'kegg_by_organism';
+  $comment = t('This view is for associating an organism to a KEGG analysis.');
+
+  // this is the SQL used to identify the organism to which an analsysis
+  // has been used.  This is obtained though the analysisfeature -> feature -> organism
+  // joins
+  $sql = "
+    SELECT DISTINCT A.name,A.analysis_id,F.organism_id
        FROM analysisprop AP
           INNER JOIN analysis A on A.analysis_id = AP.analysis_id
           INNER JOIN cvterm CVT on CVT.cvterm_id = AP.type_id
           INNER JOIN analysisfeature AF on AF.analysis_id = A.analysis_id
           INNER JOIN feature F on F.feature_id = AF.feature_id
-       WHERE CVT.name = 'analysis_kegg_settings'",
-      // special index
-      ''
-   );
-}
-/*******************************************************************************
- * Change the URL prefix of the 'KEGG_PATHWAY' database
- */
-function tripal_analysis_kegg_update_6101() {
+       WHERE CVT.name = 'analysis_kegg_settings'
+  ";
 
-   // update the KEGG_PATHWAY db entry
-   tripal_db_add_db('KEGG_PATHWAY', 'KEGG PATHWAY is a collection of manually ' .
-      'drawn pathway maps representing our knowledge on the molecular interaction ' .
-      'and reaction networks.',
-      'http://www.genome.jp/kegg/pathway.html',
-      'http://www.genome.jp/dbget-bin/www_bget?ko+',
-      TRUE);
+  // the schema array for describing this view
+  $schema = array(
+      'table' => $view_name,
+      'description' => $comment,
+      'fields' => array(
+          'analysis_name' => array(
+              'type' => 'varchar',
+              'length' => 255,
+          ),
+          'analysis_id' => array(
+              'type' => 'int',
+              'not null' => TRUE,
+          ),
+          'organism_id' => array(
+              'type' => 'int',
+              'not null' => TRUE,
+          ),
+      ),
+      'indexes' => array(
+          'kegg_by_organism_indx0' => array('analysis_id'),
+          'kegg_by_organism_indx1' => array('organism_id'),
+      ),
+      'foreign keys' => array(
+          'analysis' => array(
+              'table' => 'analysis',
+              'columns' => array(
+                  'analysis_id' => 'analysis_id',
+              ),
+          ),
+          'organism' => array(
+              'table' => 'organism',
+              'columns' => array(
+                  'organism_id' => 'organism_id',
+              ),
+          ),
+      ),
+  );
 
-   $ret = array(
-      '#finished' => 1,
-   );
-   
-   return $ret;
-}
-/*******************************************************************************
- * Provide update script for adding new cvterms
- *
- */
-function tripal_analysis_kegg_update_6000() {
-
-   // we have some new cvterms to add
-   tripal_analysis_kegg_add_cvterms();
-
-   $ret = array(
-      '#finished' => 1,
-   );
-   
-   return $ret;
+  // add the view
+  tripal_add_mview($view_name, 'tripal_analysis_kegg', $schema, $sql, $comment);
 }
 
 /**

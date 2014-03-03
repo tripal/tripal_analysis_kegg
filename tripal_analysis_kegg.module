@@ -1,6 +1,8 @@
 <?php
 
-require_once "includes/parseKAASHeir.inc";
+require_once "includes/tripal_analysis_kegg.heir_parser.inc";
+require_once "includes/tripal_analysis_kegg.chado_node.inc";
+require_once "theme/tripal_analysis_kegg.theme.inc";
 
 /*******************************************************************************
  *
@@ -14,24 +16,6 @@ function tripal_analysis_kegg_init() {
   drupal_add_css(drupal_get_path('theme', 'tripal') . '/js/jsTree/source/tree_component.css', 'theme');
   drupal_add_js(drupal_get_path('theme', 'tripal') . '/js/jsTree/source/_lib.js');
   drupal_add_js(drupal_get_path('theme', 'tripal') . '/js/jsTree/source/tree_component.js');
-}
-/*******************************************************************************
- *  Provide information to drupal about the node types that we're creating
-*  in this module
-*/
-function tripal_analysis_kegg_node_info() {
-  $nodes = array();
-  $nodes['chado_analysis_kegg'] = array(
-      'name' => t('Analysis: KEGG'),
-      'module' => 'chado_analysis_kegg',
-      'description' => t('Results from a KEGG/KAAS analysis'),
-      'has_title' => FALSE,
-      'title_label' => t('Analysis: KEGG'),
-      'has_body' => FALSE,
-      'body_label' => t('KEGG Analysis Description'),
-      'locked' => TRUE
-  );
-  return $nodes;
 }
 
 /*******************************************************************************
@@ -62,51 +46,35 @@ function tripal_analysis_kegg_menu() {
 * want permissionis that protect creation, editing and deleting of chado
 * data objects
 */
-function tripal_analysis_kegg_perm() {
+function tripal_analysis_kegg_permissions() {
   return array(
-      'access chado_analysis_kegg content',
-      'create chado_analysis_kegg content',
-      'delete chado_analysis_kegg content',
-      'edit chado_analysis_kegg content',
+      'access chado_analysis_kegg content' => array(
+        'title' => t('View Chado Analysis Blast'),
+        'description' => t('Allow users to view chado analysis blast pages.'),
+      ),
+      'create chado_analysis_kegg content'=> array(
+        'title' => t('Create Chado Analysis Blast'),
+        'description' => t('Allow users to create new chado analysis blast pages.'),
+      ),
+      'delete chado_analysis_kegg content'=> array(
+        'title' => t('Delete Chado Analysis Blast'),
+        'description' => t('Allow users to delete chado analysis blast pages.'),
+      ),
+      'edit chado_analysis_kegg content' => array(
+      'title' => t('Edit Chado Analysis Blast'),
+      'description' => t('Allow users to edit chado analysis blast pages.'),
+    ),
   );
 }
 
 /*******************************************************************************
- *  The following function proves access control for users trying to
-*  perform actions on data managed by this module
-*/
-function chado_analysis_kegg_access($op, $node, $account) {
-  if ($op == 'create') {
-    if (!user_access('create chado_analysis_kegg content', $account)) {
-      return FALSE;
-    }
-  }
-  if ($op == 'update') {
-    if (!user_access('edit chado_analysis_kegg content', $account)) {
-      return FALSE;
-    }
-  }
-  if ($op == 'delete') {
-    if (!user_access('delete chado_analysis_kegg content', $account)) {
-      return FALSE;
-    }
-  }
-  if ($op == 'view') {
-    if (!user_access('access chado_analysis_kegg content', $account)) {
-      return FALSE;
-    }
-  }
-  return NULL;
-}
-
-/*******************************************************************************
  */
-function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
+function tripal_analysis_kegg_brite($analysis_id, $type_id = 0, $ajax, $is_v0_3=0) {
   global $base_url;
   $theme_dir = drupal_get_path('theme', 'tripal');
   // If not called by ajax
   if (!$ajax) {
-    $content .=
+    $content =
     "<div id=\"tripal_kegg_brite_results\" class=\"tripal_kegg_brite-info-box\">
     <table>
     <tr>
@@ -123,13 +91,13 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
       FROM {cvterm} CVT
         INNER JOIN {analysisprop} AP ON CVT.cvterm_id = AP.type_id
         INNER JOIN {cv} CV on CV.cv_id = CVT.cv_id
-      WHERE AP.analysis_id = %d AND
+      WHERE AP.analysis_id = :analysis_id AND
         (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
       ORDER BY CVT.cvterm_id";
 
-    $result = chado_query($sql, $analysis_id);
+    $result = chado_query($sql, array(':analysis_id' => $analysis_id));
 
-    while ($brite_term = db_fetch_object($result)) {
+    while ($brite_term = $result->fetchObject()) {
       $url = url("brite/$analysis_id/$brite_term->cvterm_id/1");
       $content .= "<li class=\"tripal_kegg_brite_terms\"><a onclick=\"return tripal_update_brite(".
           "this, $brite_term->cvterm_id, '$base_url', '$theme_dir')\" href=\"$url\">
@@ -146,8 +114,8 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
   else {
     // Get BRITE term from cvterm table
     
-    $sql = 'SELECT name FROM {cvterm} WHERE cvterm_id=%d';
-    $brite_term = db_result(chado_query($sql, $type_id));
+    $sql = 'SELECT name FROM {cvterm} WHERE cvterm_id = :cvterm_id';
+    $brite_term = chado_query($sql, array(':cvterm_id' => $type_id))->fetchField();
 
     // Get BRITE hierarchy tree
     $sql = "
@@ -155,12 +123,12 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
       FROM {analysisprop} AP
         INNER JOIN {CVterm} CVT on AP.type_id = CVT.cvterm_id
         INNER JOIN {CV} on CVT.cv_id = CV.cv_id
-      WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = '%s'
-       AND AP.analysis_id = %d
+      WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = :name
+       AND AP.analysis_id = :analysis_id
     ";
-    $result = db_fetch_object(chado_query($sql, $brite_term, $analysis_id));
+    $result = chado_query($sql, array(':name' => $brite_term, 'analysis_id' => $analysis_id))->fetchObject();
     
-    $content .= "<div class=\"tripal_kegg_brite_tree\" id=\"tripal_kegg_brite_tree_$type_id\">$result->value</div>";
+    $content = "<div class=\"tripal_kegg_brite_tree\" id=\"tripal_kegg_brite_tree_$type_id\">$result->value</div>";
   }
 
   if (!$ajax) {
@@ -183,211 +151,6 @@ function tripal_analysis_kegg_brite($analysis_id, $type_id, $ajax, $is_v0_3=0) {
   }
 }
 
-/*******************************************************************************
- *  Provide a KEGG Analysis form
-*/
-function chado_analysis_kegg_form($node, $form_state) {
-	
-  // add in the default fields
-  $form = chado_analysis_form($node, $form_state);
-
-  // set the defaults
-  $kegg = $node->analysis->tripal_analysis_kegg;
-  $query_re = $kegg->query_re;
-  $query_type = $kegg->query_type;
-  $query_uniquename = $kegg->query_uniquename;
-
-  $hierfile = $kegg->hierfile;
-
-  $moreSettings ['kegg'] = 'KEGG Analysis Settings';
-  $form['kegg'] = array(
-      '#title' => t('KEGG Settings'),
-      '#type' => 'fieldset',
-      '#description' => t('Specific Settings for KEGG Analysis.'),
-      '#collapsible' => TRUE,
-      '#attributes' => array('id' => 'kegg-extra-settings'),
-      '#weight' => 11
-  );
-  $form['kegg']['hierfile'] = array(
-      '#title' => t('KAAS hier.tar.gz Output File'),
-      '#type' => 'textfield',
-      '#description' => t('The full path to the hier.tar.gz file generated by KAAS.
-          Alternatively, you can input the full path to the directory
-          that contains decompressed kegg files.'),
-      '#default_value' => $hierfile,
-  );
-  $form['kegg']['query_re'] = array(
-      '#title' => t('Query Name RE'),
-      '#type' => 'textfield',
-      '#description' => t('Enter the regular expression that will extract the '.
-          'feature name from the results line in the KEGG heir results. This will be '.
-          'the same as the definition line in the query FASTA file used for the analysis.  This option is '.
-          'is only required when the query does not identically match a feature '.
-          'in the database.'),
-      '#default_value' => $query_re,
-  );
-
-  $form['kegg']['query_type'] = array(
-      '#title' => t('Query Type'),
-      '#type' => 'textfield',
-      '#description' => t('Please enter the Sequence Ontology term that describes '.
-          'the query sequences used for KEGG.  This is only necessary if two '.
-          'or more sequences have the same name.'),
-      '#default_value' => $query_type,
-  );
-
-  $form['kegg']['query_uniquename'] = array(
-      '#title' => t('Use Unique Name'),
-      '#type' => 'checkbox',
-      '#description' => t('Select this checboxk if the feature name in the KEGG heir file '.
-          'matches the uniquename in the database.  By default, the feature will '.
-          'be mapped to the "name" of the feature.'),
-      '#default_value' => $query_uniquename,
-  );
-  $form['kegg']['keggjob'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Submit a job to parse the kegg output into Chado'),
-      '#description' => t('Note: features used in the KAAS analysis must '.
-          'exist in chado before parsing the file. Otherwise, KEGG '.
-          'results that cannot be linked to a feature will be '.
-          'discarded.'),
-  );
-  return $form;
-}
-/**
- *
- */
-function chado_analysis_kegg_validate($node, &$form) {
-  // use the analysis parent to validate the node
-  tripal_analysis_validate($node, $form);
-}
-/*******************************************************************************
- *
-*/
-function chado_analysis_kegg_insert($node) {
-
-  // get the analysis_id from the node before the call below
-  $analysis_id = $node->analysis_id;
-  
-  // insert the analysis. If the analysis already exist then this
-  // call will link it to a new Drupa node.
-  chado_analysis_insert($node);
-  
-  // If this analysis already exists then don't recreate it in chado. This can happen
-  // when nodes are synced.  They already exist but Drupal doesn't know it and calls 
-  // this function.
-  if (!$analysis_id) {    
-    
-    // now add in the remaining settings as a single property but separated by bars
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_settings', $node->hierfile);
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_re', $node->query_re);
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_type', $node->query_type);
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_uniquename', $node->query_uniquename);
-     
-    // Add a job if the user wants to parse the html output
-    chado_analysis_kegg_submit_job($node);
-  }
-}
-/**
- *
- */
-function chado_analysis_kegg_submit_job($node) {
-  global $user;
-  global $base_url;
-
-  if ($node->keggjob) {
-    $job_args[0] = $node->analysis_id;
-    $job_args[1] = $node->hierfile;
-    $job_args[2] = $base_url;
-    $job_args[3] = $node->query_re;
-    $job_args[4] = $node->query_type;
-    $job_args[5] = $node->query_uniquename;
-
-    if (is_readable($node->hierfile)) {
-      $fname = preg_replace("/.*\/(.*)/", "$1", $node->hierfile);
-      tripal_add_job("Parse KAAS output: $fname", 'tripal_analysis_kegg',
-          'tripal_analysis_kegg_parseHierFile', $job_args, $user->uid);
-    } 
-    else {
-      drupal_set_message("Can not open KAAS hier.tar.gz output file. Job not scheduled.");
-    }
-  }
-}
-/*******************************************************************************
- * Delete KEGG anlysis
-*/
-function chado_analysis_kegg_delete($node) {
-  chado_analysis_delete($node);
-}
-
-/*******************************************************************************
- * Update KEGG analysis
-*/
-function chado_analysis_kegg_update($node) {
-  // insert the analysis
-  chado_analysis_update($node);
-
-  // now add in the remaining settings as a single property but separated by bars
-  tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_settings', $node->hierfile, 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_re', $node->query_re, 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_type', $node->query_type, 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_uniquename', $node->query_uniquename, 1);
-
-   
-  // Add a job if the user wants to parse the output
-  chado_analysis_kegg_submit_job($node);
-}
-/*******************************************************************************
- *  When a node is requested by the user this function is called to allow us
-*  to add auxiliary data to the node object.
-*/
-function chado_analysis_kegg_load($node) {
-
-  // load the default set of analysis fields
-  $additions = chado_analysis_load($node);
-
-  // create some variables for easier lookup
-  $analysis = $additions->analysis;
-  $analysis_id = $analysis->analysis_id;
-
-  // get the heirfile name
-  $hierfile        = tripal_analysis_get_property($analysis_id, 'analysis_kegg_settings');
-  $query_re        = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_re');
-  $query_type      = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_type');
-  $query_uniquename= tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_uniquename');
-  
-  if (!is_object($analysis->tripal_analysis_kegg)) {
-    $analysis->tripal_analysis_kegg = new stdClass;
-  }
-
-  $analysis->tripal_analysis_kegg->hierfile = $hierfile->value;
-  $analysis->tripal_analysis_kegg->query_re        = $query_re->value;
-  $analysis->tripal_analysis_kegg->query_type      = $query_type->value;
-  $analysis->tripal_analysis_kegg->query_uniquename= $query_uniquename->value;
-
-  return $additions;
-}
-
-/**
- *
- */
-function chado_analysis_kegg_view($node, $teaser = FALSE, $page = FALSE) {
-  // use drupal's default node view:
-  if (!$teaser) {
-    $node = node_prepare($node, $teaser);
-    // When previewing a node submitting form, it shows 'Array' instead of
-    // correct date format. We need to format the date here
-    $time = $node->timeexecuted;
-    if (is_array($time)) {
-      $month = $time['month'];
-      $day = $time['day'];
-      $year = $time['year'];
-      $timestamp = $year . '-' . $month . '-' . $day;
-      $node->timeexecuted = $timestamp;
-    }
-  }
-  return $node;
-}
 /**
  *
  *
@@ -437,107 +200,54 @@ function tripal_analysis_kegg_block($op = 'list', $delta = 0, $edit=array()) {
       }
   }
 }
-/*******************************************************************************
- * HOOK: Implementation of hook_nodeapi()
-* Display library information for associated features or organisms
-* This function also provides contents for indexing
-*/
-function tripal_analysis_kegg_nodeapi(&$node, $op, $teaser, $page) {
-  switch ($op) {
-    case 'view':
-
-      // add the library to the organism/feature search indexing
-      if ($node->build_mode == NODE_BUILD_SEARCH_INDEX) {
-        $node->content['tripal_analysis_kegg_search_index'] = array(
-            '#value' => theme('tripal_analysis_kegg_search_index', $node),
-            '#weight' => 6,
-        );
-      } 
-      elseif ($node->build_mode == NODE_BUILD_SEARCH_RESULT) {
-        $node->content['tripal_analysis_kegg_search_result'] = array(
-            '#value' => theme('tripal_analysis_kegg_search_result', $node),
-            '#weight' => 6,
-        );
-      } 
-      else {
-        switch ($node->type) {
-          case 'chado_organism':
-            // Show KEGG report on the analysis page
-            $node->content['tripal_organism_kegg_summary'] = array(
-            '#value' => theme('tripal_organism_kegg_summary', $node),
-            );
-            break;
-          case 'chado_feature':
-            // Show KEGG terms on a feature page
-            $node->content['tripal_feature_kegg_terms'] = array(
-            '#value' => theme('tripal_feature_kegg_terms', $node),
-            );
-        }
-
-      }
-      break;
-  }
-}
-
-/**
- * Implements hook_theme_registry_alter().
- */
-function tripal_analysis_kegg_theme_registry_alter(&$info) {
-  // Inject our module into the node theme registry as being an available theme
-  // path so that we can override the node template for our content type.
-  array_splice($info['node']['theme paths'], 1, 0, array(drupal_get_path('module', 'tripal_analysis_kegg')));
-}
 
 /************************************************************************
  *  We need to let drupal know about our theme functions and their arguments.
 *  We create theme functions to allow users of the module to customize the
 *  look and feel of the output generated in this module
 */
-function tripal_analysis_kegg_theme() {
-  $path = drupal_get_path('module', 'tripal_analysis_kegg') . '/theme';
-  
-  return array(
-    'tripal_analysis_kegg_search_index' => array(
-      'arguments' => array('node'),
-    ),
-    'tripal_analysis_kegg_search_result' => array(
-      'arguments' => array('node'),
-    ),
-    'tripal_organism_kegg_summary' => array(
-      'arguments' => array('node' => NULL),
-      'template' => 'tripal_organism_kegg_summary',
-      'path' => $path . '/tripal_organism',
-    ),
-    'tripal_feature_kegg_terms' => array(
-      'arguments' => array('node' => NULL),
-      'template' => 'tripal_feature_kegg_terms',
-      'path' => $path . '/tripal_feature',
-    ),
-    'tripal_analysis_kegg_base' => array(
-      'arguments' => array('node' => NULL),
-      'template' => 'tripal_analysis_kegg_base',
-      'path' => $path . '/tripal_analysis_kegg',
-    ), 
-    'tripal_analysis_kegg_report' => array(
-      'arguments' => array('node' => NULL),
-      'template' => 'tripal_analysis_kegg_report',
-      'path' => $path . '/tripal_analysis_kegg',
-    ),
-    'chado_analysis_kegg_node_form' => array(
-      'arguments' => array('form'),
-    ),
+function tripal_analysis_kegg_theme($existing, $type, $theme, $path) {
+
+  $core_path = drupal_get_path('module', 'tripal_core');
+  $items = array (
+      'node__chado_analysis_kegg' => array (
+          'template' => 'node--chado-generic',
+          'render element' => 'node',
+          'base hook' => 'node',
+          'path' => "$core_path/theme"
+      ),
+      'tripal_analysis_kegg_base' => array(
+          'variables' => array('node' => NULL),
+          'template' => 'tripal_analysis_kegg_base',
+          'path' => "$path/theme/tripal_analysis_kegg",
+      ),
+      'tripal_analysis_kegg_teaser' => array(
+          'variables' => array('node' => NULL),
+          'template' => 'tripal_analysis_kegg_teaser',
+          'path' => "$path/theme/tripal_analysis_kegg",
+      ),
+      'tripal_analysis_kegg_report' => array(
+          'variables' => array('node' => NULL),
+          'template' => 'tripal_analysis_kegg_report',
+          'path' => "$path/theme/tripal_analysis_kegg",
+      ),
+
+      // tripal_organism theme
+      'tripal_organism_kegg_summary' => array(
+          'variables' => array('node' => NULL),
+          'template' => 'tripal_organism_kegg_summary',
+          'path' => "$path/theme/tripal_organism",
+      ),
   );
+  
+  return $items;
 }
 /**
  *
  *
  * @ingroup tripal_analysis_kegg
  */
-function tripal_analysis_kegg_preprocess(&$variables) {
-
-  // if the template file is the default node template file then we want
-  // to add all of our variables.
-  if ($variables['template_files'][0] == 'node-chado_analysis_kegg') {
+function tripal_analysis_kegg_preprocess_tripal_analysis_kegg_report(&$variables) {
     $analysis = $variables['node']->analysis;
     $report = tripal_analysis_kegg_full_report($analysis->analysis_id);
     
@@ -545,7 +255,6 @@ function tripal_analysis_kegg_preprocess(&$variables) {
       $analysis->tripal_analysis_kegg = new stdClass;  
     }
     $analysis->tripal_analysis_kegg->kegg_report = $report;
-  }
 }
 /**
  *
@@ -554,91 +263,11 @@ function tripal_analysis_kegg_preprocess(&$variables) {
 function tripal_analysis_kegg_preprocess_tripal_organism_kegg_summary(&$variables) {
   $node = $variables['node'];
   $organism = $node->organism;
-  if (!is_object($organism->tripal_analysis_kegg)){
+  if (!property_exists($organism, 'tripal_analysis_kegg') || !is_object($organism->tripal_analysis_kegg)){
     $organism->tripal_analysis_kegg = new stdClass;  
   }
   $organism->tripal_analysis_kegg->select_form = tripal_analysis_kegg_load_organism_kegg_summary($node);
 }
-/**
- *
- */
-function tripal_analysis_kegg_preprocess_tripal_feature_kegg_terms(&$variables) {
-  $node = $variables['node'];
-  $feature = $node->feature;
-  if (!is_object($feature->tripal_analysis_kegg)) {
-    $feature->tripal_analysis_kegg = new stdClass;  
-  }
-  $feature->tripal_analysis_kegg->results = tripal_analysis_kegg_load_feature_terms($feature);
-  $feature->tripal_analysis_kegg->results_v0_3 = tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature);
-}
-/************************************************************************
- */
-function theme_tripal_analysis_kegg_search_index($node) {
-  if ($node->type == 'chado_feature') {
-    // Find cvterm_id for 'kegg_brite_data'
-    $sql = "SELECT cvterm_id
-    FROM {cvterm} CVT
-    INNER JOIN {cv} ON cv.cv_id = CVT.cv_id
-    WHERE cv.name = 'tripal'
-    AND CVT.name = '%s'";
-    
-    $brite_id = db_result(chado_query($sql, 'kegg_brite_data'));
-
-    // Get analysis id
-    $sql = "SELECT analysis_id AS aid
-    FROM {analysisfeature} AF
-    INNER JOIN {analysisfeatureprop} AFP ON AF.analysisfeature_id = AFP.analysisfeature_id
-    WHERE feature_id = %d
-    AND AFP.type_id = %d
-    GROUP BY analysis_id";
-    $feature = $node->feature;
-    $feature_id = $feature->feature_id;
-    $hasResult = db_result(chado_query($sql, $feature_id, $brite_id));
-    $result = chado_query($sql, $feature->feature_id, $brite_id);
-
-    // Show kegg result ORDER BY time
-    if ($hasResult) { // If there is any result, show expandable box
-      $content = "";
-
-      while ($ana = db_fetch_object($result)) {
-        // Show analysis date
-        $sql = "SELECT name, to_char(timeexecuted, 'MM-DD-YYYY') AS time
-        FROM {analysis}
-        WHERE analysis_id = %d";
-        $ana_details = db_fetch_object(chado_query($sql, $ana->aid));
-        // Find node id for the analysis
-        
-        $ana_nid = db_result(db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = %d", $ana->aid));
-        $ana_url = url("node/". $ana_nid);
-        
-         
-        // Show content
-        $content .= "$ana_details->name";
-         
-        // Show Kegg results
-        $sql = "SELECT AFP.value AS afpvalue
-        FROM {analysisfeatureprop} AFP
-        INNER JOIN {analysisfeature} AF on AF.analysisfeature_id = AFP.analysisfeature_id
-        WHERE AF.analysis_id = %d
-        AND AF.feature_id = %d
-        ";
-        $kegg_results = chado_query($sql, $ana->aid, $feature_id);
-        while ($afp = db_fetch_object($kegg_results)) {
-          $content .= " $afp->afpvalue";
-        }
-      }
-    }    
-    return $content;
-  }
-}
-
-/************************************************************************
- */
-function theme_tripal_analysis_kegg_search_result($node) {
-  //  $content = theme_tripal_analysis_kegg_node_add($node);
-  //  return $content;
-}
-
 
 /************************************************************************
  */
@@ -649,17 +278,18 @@ function tripal_analysis_kegg_load_organism_kegg_summary($node) {
   $sql = "
     SELECT analysis_id
     FROM {kegg_by_organism} KBO
-    WHERE organism_id = %d
+    WHERE organism_id = :organism_id
     ORDER BY analysis_id DESC
   ";
   
-  $results = chado_query($sql, $organism->organism_id);
+  $results = chado_query($sql, array(':organism_id' => $organism->organism_id));
   
 
   # check to ensure we have access to at least one of the KEGG analyses
   $has_results = 0;
-  while ($analysis = db_fetch_object($results)) {
-    $anode = tripal_analysis_get_node($analysis->analysis_id);
+  while ($analysis = $results->fetchObject()) {
+    $nid = chado_get_nid_from_id('analysis', $analysis->analysis_id);
+   $anode = node_load($nid);
     if (node_access("view", $anode)) {
       $has_results = 1;
     }
@@ -692,14 +322,14 @@ function tripal_analysis_kegg_full_report($analysis_id) {
     FROM {cvterm} CVT
       INNER JOIN {analysisprop} AP ON CVT.cvterm_id = AP.type_id
       INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
-    WHERE AP.analysis_id = %d
+    WHERE AP.analysis_id = :analysis_id
       AND (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
     ORDER BY CVT.cvterm_id
   ";
-  $result = chado_query($sql, $analysis_id);
+  $result = chado_query($sql, array(':analysis_id' => $analysis_id));
 
-  if (db_result($result)) {
-    return $content = tripal_analysis_kegg_brite($analysis_id, $type_id, 0);
+  if ($result->fetchObject()) {
+    return $content = tripal_analysis_kegg_brite($analysis_id, 0, 0);
   }
    
   return "<i>Note:</i> No results available.";
@@ -890,25 +520,26 @@ function tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature) {
 }
 /************************************************************************
  */
-function tripal_analysis_kegg_select_form(&$form_state = NULL, $node) {
+function tripal_analysis_kegg_select_form($form, $form_state, $node) {
 
   $form = array();
   // find analyses that have KEGG terms
   $sql = "
   SELECT *
   FROM {kegg_by_organism} KBO
-  WHERE organism_id = %d
+  WHERE organism_id = :organism_id
   ORDER BY analysis_id DESC
   ";
   
-  $results = chado_query($sql, $node->organism->organism_id);
+  $results = chado_query($sql, array(':organism_id' => $node->organism->organism_id));
   
 
   $analyses = array();
   $analyses[''] = '';
-  while ($analysis = db_fetch_object($results)) {
+  while ($analysis = $results->fetchObject()) {
     # check to see if the user has permission to see this analysis
-    $anode = tripal_analysis_get_node($analysis->analysis_id);
+    $nid = chado_get_nid_from_id('analysis', $analysis->analysis_id);
+    $anode = node_load($nid);
     if (node_access("view", $anode)) {
       $analyses[$analysis->analysis_id] = "$analysis->analysis_name";
     }
@@ -940,20 +571,18 @@ function tripal_analysis_kegg_select_form(&$form_state = NULL, $node) {
 }
 
 /**
- * 
- * @param unknown_type $form
+ * Implementation of hook_form_alter()
+ *
+ * @param $form
+ * @param $form_state
+ * @param $form_id
+ *
+ *
  */
-function theme_chado_analysis_kegg_node_form($form) {
+function tripal_analysis_kegg_form_alter(&$form, &$form_state, $form_id) {
 
-  $properties_table = tripal_analysis_theme_node_form_properties($form);
-  $markup .= $properties_table;
-
-  $form['properties']['table'] = array(
-    '#type' => 'markup',
-    '#value' =>  $markup,
-    '#prefix' => '<div id="tripal-analysis-edit-properties-table">',
-    '#suffix' => '</div>',
-  );
-  $form['buttons']['#weight'] = 50;
-  return drupal_render($form);
+  if ($form_id == "chado_analysis_kegg_node_form") {
+    // turn of preview button for insert/updates
+    $form['actions']['preview']['#access'] = FALSE;
+  }
 }

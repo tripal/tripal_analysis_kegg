@@ -7,38 +7,6 @@
 
 function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     $query_re, $query_type, $query_uniquename, $job_id) {
-      
-  // make sure we have a persistent db connection
-  $connection = tripal_db_persistent_chado();
-  if (!$connection) {
-    watchdog('tr_kegg_parse',"NOTICE: Cannot create persistent connection to the database. Uploading may be slow", 
-        array(), 'notice');
-      exit;  
-  }
-  
-  // begin the transaction
-  tripal_db_start_transaction();
-      
-  // if we cannot get a connection then let the user know the loading will be slow
-  if (!$connection) {
-     print "A persistant connection was not obtained. Loading will be slow\n";
-  }
-  else {
-     print "\nNOTE: Loading of this KEGG heir file is performed using a database transaction. \n" .
-           "If the load fails or is terminated prematurely then the entire set of \n" .
-           "insertions/updates is rolled back and will not be found in the database\n\n";
-  }
-  
-  // prepare the statement we'll use later to get the node id of the feature
-  // because this is a prepare on the Drupal database we don't use the Tripal API
-  $sql = "PREPARE get_feature_nid (int) AS 
-          SELECT nid FROM {chado_feature} WHERE feature_id = \$1";
-  if (!db_query($sql)) {
-    watchdog('tr_kegg_parse',"ERROR: Cannot prepare statement 'get_feature_nid'.", 
-      array(), 'error');
-    exit;
-  }
-   
 
   // If user input a file (e.g. hier.tar.gz), decompress it first
   if (is_file($hierfile)) {
@@ -82,13 +50,13 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
   print "Preparing database...\n";
   $sql = "
     DELETE FROM {analysisprop}
-    WHERE analysis_id = %d and
+    WHERE analysis_id = :analysis_id and
       type_id IN (
         SELECT cvterm_id
         FROM {cvterm} CVT 
           INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
         WHERE CV.name='KEGG_BRITE')";
-  $success = chado_query($sql, $analysis_id);
+  $success = chado_query($sql, array(':analysis_id' => $analysis_id));
   if (!$success) {
     watchdog('tr_kegg_parse',"ERROR: Unable to clear previous analysisprop results.", array(), 'error'); 
     exit;
@@ -161,9 +129,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
       watchdog('tr_kegg_parse', "ERROR: %err", array('%err' => $stderr), 'error');
     }
   }
- 
-  // commit the transaction
-  tripal_db_commit_transaction();
+  
   print "\nDone\n";
   return;
 }
@@ -547,8 +513,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       }
 
       // get the node ID of the feature if one exists
-      $sql = "EXECUTE get_feature_nid(%s)";
-      $nid = db_result(chado_query($sql, $feature_id));
+      $nid = chado_get_nid_from_id('feature', $feature_id);
 
       // Add link to each matched feature
       if ($nid) {

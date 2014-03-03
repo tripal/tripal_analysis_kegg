@@ -6,7 +6,7 @@ $has_results = $organism->tripal_analysis_kegg->select_form['has_results'];
 if ($has_results) { ?>
   <div id="tripal_organism-kegg_summary-box" class="tripal_organism-info-box tripal-info-box">
     <div  class="tripal_organism-info-box-title tripal-info-box-title">KEGG Analysis Reports</div> 
-    <?php print $form; ?>
+    <?php print drupal_render($form); ?>
     <div id="tripal_analysis_kegg_org_report"></div>
     <div id="tripal_ajaxLoading" style="display:none">
       <div id="loadingText">Loading...</div>
