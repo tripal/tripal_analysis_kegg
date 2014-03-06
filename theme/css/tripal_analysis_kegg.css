@@ -1,6 +1,30 @@
-/*
- Copyright 2009 Clemson University
-*/
+
+#heirarchy_terms_list ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+#heirarchy_terms_list li {
+    background-image: url(../images/page.png);
+    background-position: 0 1px;
+    background-repeat: no-repeat;
+    padding-left: 20px;
+}
+#heirarchy_terms_list li.folder {
+    background-image: url(../images/folder.png);
+    font-weight:normal; 
+}
+
+#heirarchy_terms_list a {
+    color: #000000;
+    cursor: pointer;
+    text-decoration: none;
+}
+#heirarchy_terms_list a:hover {
+    text-decoration: underline;
+}
+
+
 
 .tripal_kegg-info-box, .tripal_kegg_summary-info-box {
    margin-top: 10px;

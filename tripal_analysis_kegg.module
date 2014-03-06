@@ -12,10 +12,6 @@ function tripal_analysis_kegg_init() {
   // add the tripal_analysis_kegg JS and CSS
   drupal_add_js(drupal_get_path('module', 'tripal_analysis_kegg') . '/theme/js/tripal_analysis_kegg.js');
   drupal_add_css(drupal_get_path('module', 'tripal_analysis_kegg') . '/theme/css/tripal_analysis_kegg.css', 'theme');
-  // add the jsTree JS and CSS
-  drupal_add_css(drupal_get_path('theme', 'tripal') . '/js/jsTree/source/tree_component.css', 'theme');
-  drupal_add_js(drupal_get_path('theme', 'tripal') . '/js/jsTree/source/_lib.js');
-  drupal_add_js(drupal_get_path('theme', 'tripal') . '/js/jsTree/source/tree_component.js');
 }
 
 /*******************************************************************************
@@ -24,6 +20,7 @@ function tripal_analysis_kegg_init() {
 * adds more menu items needed for this module.
 */
 function tripal_analysis_kegg_menu() {
+
   $items['brite/%'] = array(
       'title' => t('KEGG BRITE'),
       'page callback' => 'tripal_analysis_kegg_brite',
@@ -38,6 +35,20 @@ function tripal_analysis_kegg_menu() {
       'page arguments' => array(1),
       'access arguments' => array('access chado_analysis_kegg content'),
       'type' => MENU_CALLBACK
+  );
+  
+  $items['tripal_analysis_kegg/report/nojs/%/%'] = array(
+    'page callback' => 'tripal_analysis_kegg_brite_ajax_update',
+    'page arguments' => array(3, 4),
+    'access arguments' => array('access chado_analysis_kegg content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['tripal_analysis_kegg/report/ajax/%/%'] = array(
+    'delivery callback' => 'ajax_deliver',
+    'page callback' => 'tripal_analysis_kegg_brite_ajax_update',
+    'page arguments' => array(3, 4),
+    'access arguments' => array('access chado_analysis_kegg content'),
+    'type' => MENU_CALLBACK
   );
   return $items;
 }
@@ -67,89 +78,7 @@ function tripal_analysis_kegg_permissions() {
   );
 }
 
-/*******************************************************************************
- */
-function tripal_analysis_kegg_brite($analysis_id, $type_id = 0, $ajax, $is_v0_3=0) {
-  global $base_url;
-  $theme_dir = drupal_get_path('theme', 'tripal');
-  // If not called by ajax
-  if (!$ajax) {
-    $content =
-    "<div id=\"tripal_kegg_brite_results\" class=\"tripal_kegg_brite-info-box\">
-    <table>
-    <tr>
-    <th>KEGG BRITE Heirarchy</th>
-    <th id=\"tripal_kegg_brite_header\">Hierarchy:</th>
-    </tr>
-    <tr>
-    <td nowrap valign=\"top\">
-    ";
-    // List all BRITE terms on the left. The SQL statement below can use
-    // the older method for CVTerms with BRITE hierarchies or the newer method
-    $sql = "
-      SELECT DISTINCT CVT.name, CVT.cvterm_id
-      FROM {cvterm} CVT
-        INNER JOIN {analysisprop} AP ON CVT.cvterm_id = AP.type_id
-        INNER JOIN {cv} CV on CV.cv_id = CVT.cv_id
-      WHERE AP.analysis_id = :analysis_id AND
-        (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
-      ORDER BY CVT.cvterm_id";
 
-    $result = chado_query($sql, array(':analysis_id' => $analysis_id));
-
-    while ($brite_term = $result->fetchObject()) {
-      $url = url("brite/$analysis_id/$brite_term->cvterm_id/1");
-      $content .= "<li class=\"tripal_kegg_brite_terms\"><a onclick=\"return tripal_update_brite(".
-          "this, $brite_term->cvterm_id, '$base_url', '$theme_dir')\" href=\"$url\">
-          $brite_term->name
-          </a></li>";
-    }
-    // Show the hierarchy tree
-    $content .="</td>
-    <td nowrap id=\"tripal_kegg_brite_hierarchy\" valign=\"top\">";
-    $content .= "<i>Note:</i> Click a BRITE term for its functional hierarchy";
-
-    // If called by ajax, generate tree structure
-  } 
-  else {
-    // Get BRITE term from cvterm table
-    
-    $sql = 'SELECT name FROM {cvterm} WHERE cvterm_id = :cvterm_id';
-    $brite_term = chado_query($sql, array(':cvterm_id' => $type_id))->fetchField();
-
-    // Get BRITE hierarchy tree
-    $sql = "
-      SELECT value
-      FROM {analysisprop} AP
-        INNER JOIN {CVterm} CVT on AP.type_id = CVT.cvterm_id
-        INNER JOIN {CV} on CVT.cv_id = CV.cv_id
-      WHERE (CV.name = 'tripal' or CV.name = 'KEGG_BRITE') and CVT.name = :name
-       AND AP.analysis_id = :analysis_id
-    ";
-    $result = chado_query($sql, array(':name' => $brite_term, 'analysis_id' => $analysis_id))->fetchObject();
-    
-    $content = "<div class=\"tripal_kegg_brite_tree\" id=\"tripal_kegg_brite_tree_$type_id\">$result->value</div>";
-  }
-
-  if (!$ajax) {
-    $content .= "     </td>
-    </tr>
-    </table>
-    </div>";
-  }
-  // since this function provides output for addition into
-  // an analysis page, as well as an AJAX refresh of content
-  // within the BRITE hierarchy we need to setup the return
-  // different depending on the request type
-  if ($ajax) {
-    drupal_json(array('update' => $content,
-        'id' => "tripal_kegg_brite_tree_$type_id",
-        'brite_term' => "Hierarchy: $brite_term"));
-  } 
-  else {
-    return $content;
-  }
-}
 
 /**
  *
@@ -242,98 +171,19 @@ function tripal_analysis_kegg_theme($existing, $type, $theme, $path) {
   
   return $items;
 }
+
+
+
 /**
  *
- *
- * @ingroup tripal_analysis_kegg
  */
-function tripal_analysis_kegg_preprocess_tripal_analysis_kegg_report(&$variables) {
-    $analysis = $variables['node']->analysis;
-    $report = tripal_analysis_kegg_full_report($analysis->analysis_id);
-    
-    if (!is_object($analysis->tripal_analysis_kegg)) {
-      $analysis->tripal_analysis_kegg = new stdClass;  
-    }
-    $analysis->tripal_analysis_kegg->kegg_report = $report;
-}
-/**
- *
- * @ingroup tripal_analysis_kegg
- */
-function tripal_analysis_kegg_preprocess_tripal_organism_kegg_summary(&$variables) {
-  $node = $variables['node'];
-  $organism = $node->organism;
-  if (!property_exists($organism, 'tripal_analysis_kegg') || !is_object($organism->tripal_analysis_kegg)){
-    $organism->tripal_analysis_kegg = new stdClass;  
-  }
-  $organism->tripal_analysis_kegg->select_form = tripal_analysis_kegg_load_organism_kegg_summary($node);
-}
-
-/************************************************************************
- */
-function tripal_analysis_kegg_load_organism_kegg_summary($node) {
-  $organism = $node->organism;
-
-  // find analyses that have KEGG terms
-  $sql = "
-    SELECT analysis_id
-    FROM {kegg_by_organism} KBO
-    WHERE organism_id = :organism_id
-    ORDER BY analysis_id DESC
-  ";
-  
-  $results = chado_query($sql, array(':organism_id' => $organism->organism_id));
-  
-
-  # check to ensure we have access to at least one of the KEGG analyses
-  $has_results = 0;
-  while ($analysis = $results->fetchObject()) {
-    $nid = chado_get_nid_from_id('analysis', $analysis->analysis_id);
-   $anode = node_load($nid);
-    if (node_access("view", $anode)) {
-      $has_results = 1;
-    }
-  }
-  return array(
-    'has_results' => $has_results,
-    'form' => drupal_get_form('tripal_analysis_kegg_select_form', $node),
-  );
-}
-/************************************************************************
- *
-*/
 
 function tripal_analysis_kegg_org_report($analysis_id) {
   $content = tripal_analysis_kegg_full_report($analysis_id);
   $opt = array($content);
   return drupal_json($opt);
 }
-/************************************************************************
- */
-function tripal_analysis_kegg_full_report($analysis_id) {
-  $has_results = 0;
-   
-  // The cvterm for KEGG Brite heirarchies has changed, therefore, we
-  // have two queries, one for the new method and one for backwards
-  // compatiblity.  The data, however, is still stored in the same way.
-  // the SQL below will pull both forms:
-  $sql = "
-    SELECT CVT.name, CVT.cvterm_id
-    FROM {cvterm} CVT
-      INNER JOIN {analysisprop} AP ON CVT.cvterm_id = AP.type_id
-      INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
-    WHERE AP.analysis_id = :analysis_id
-      AND (CVT.definition LIKE 'KEGG BRITE term: %' or CV.name = 'KEGG_BRITE')
-    ORDER BY CVT.cvterm_id
-  ";
-  $result = chado_query($sql, array(':analysis_id' => $analysis_id));
 
-  if ($result->fetchObject()) {
-    return $content = tripal_analysis_kegg_brite($analysis_id, 0, 0);
-  }
-   
-  return "<i>Note:</i> No results available.";
-}
 /*******************************************************************************
  * Tripal Kegg administrative setting form. This function is called by
 * tripal_analysis module which asks for an admin form to show on the page
@@ -518,17 +368,22 @@ function tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature) {
 
   return $results;
 }
-/************************************************************************
+/**
+ * 
+ * @param $form
+ * @param $form_state
+ * @param $node
+ * 
  */
 function tripal_analysis_kegg_select_form($form, $form_state, $node) {
 
   $form = array();
   // find analyses that have KEGG terms
   $sql = "
-  SELECT *
-  FROM {kegg_by_organism} KBO
-  WHERE organism_id = :organism_id
-  ORDER BY analysis_id DESC
+    SELECT *
+    FROM {kegg_by_organism} KBO
+    WHERE organism_id = :organism_id
+    ORDER BY analysis_id DESC
   ";
   
   $results = chado_query($sql, array(':organism_id' => $node->organism->organism_id));

@@ -21,8 +21,8 @@ function tripal_analysis_kegg_node_info() {
 
 /*******************************************************************************
  *  The following function proves access control for users trying to
-*  perform actions on data managed by this module
-*/
+ *  perform actions on data managed by this module
+ */
 function chado_analysis_kegg_access($op, $node, $account) {
   if ($op == 'create') {
     if (!user_access('create chado_analysis_kegg content', $account)) {
@@ -136,19 +136,9 @@ function chado_analysis_kegg_validate($node, &$form, &$form_state) {
 */
 function chado_analysis_kegg_insert($node) {
 
-  // get the analysis_id from the node before the call below
-  if (property_exists($node, 'analysis_id')) {
-    $analysis_id = $node->analysis_id;
-  }
-
   // insert the analysis. If the analysis already exist then this
   // call will link it to a new Drupa node.
   chado_analysis_insert($node);
-
-  // If this analysis already exists then don't recreate it in chado. This can happen
-  // when nodes are synced.  They already exist but Drupal doesn't know it and calls
-  // this function.
-  if (!$analysis_id) {
 
   // now add in the remaining settings as a single property but separated by bars
   tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_settings', trim($node->hierfile));
@@ -158,11 +148,11 @@ function chado_analysis_kegg_insert($node) {
    
   // Add a job if the user wants to parse the html output
   chado_analysis_kegg_submit_job($node);
-  }
 }
-  /**
-  *
-  */
+
+/**
+ *
+ */
 function chado_analysis_kegg_submit_job($node) {
   global $user;
   global $base_url;
@@ -185,7 +175,7 @@ function chado_analysis_kegg_submit_job($node) {
     }
   }
 }
-/*******************************************************************************
+/**
 * Delete KEGG anlysis
 */
 function chado_analysis_kegg_delete($node) {
@@ -215,20 +205,20 @@ function chado_analysis_kegg_update($node) {
 function chado_analysis_kegg_load($nodes) {
     
   // load the default set of analysis fields
-  chado_analysis_load ( $nodes );
+  chado_analysis_load ($nodes);
   
-  foreach ( $nodes as $nid => $node ) {
+  foreach ($nodes as $nid => $node) {
     // create some variables for easier lookup
     $analysis = $node->analysis;
     $analysis_id = $analysis->analysis_id;
     
     // get the heirfile name
-    $hierfile = tripal_analysis_get_property ( $analysis_id, 'analysis_kegg_settings' );
-    $query_re = tripal_analysis_get_property ( $analysis->analysis_id, 'analysis_kegg_query_re' );
-    $query_type = tripal_analysis_get_property ( $analysis->analysis_id, 'analysis_kegg_query_type' );
-    $query_uniquename = tripal_analysis_get_property ( $analysis->analysis_id, 'analysis_kegg_query_uniquename' );
+    $hierfile         = tripal_analysis_get_property ($analysis_id, 'analysis_kegg_settings');
+    $query_re         = tripal_analysis_get_property ($analysis->analysis_id, 'analysis_kegg_query_re');
+    $query_type       = tripal_analysis_get_property ($analysis->analysis_id, 'analysis_kegg_query_type');
+    $query_uniquename = tripal_analysis_get_property ($analysis->analysis_id, 'analysis_kegg_query_uniquename');
     
-    $analysis->tripal_analysis_kegg = new stdClass ();    
+    $analysis->tripal_analysis_kegg = new stdClass();
     $analysis->tripal_analysis_kegg->hierfile = is_object($hierfile)   ? $hierfile->value : '';
     $analysis->tripal_analysis_kegg->query_re = is_object($query_re)  ? $query_re->value: '';
     $analysis->tripal_analysis_kegg->query_type = is_object($query_type)  ? $query_type->value : '';
@@ -238,9 +228,9 @@ function chado_analysis_kegg_load($nodes) {
   }
 }
 
-      /**
-       *
-       */
+/**
+ *
+ */
 function chado_analysis_kegg_view($node, $teaser = FALSE, $page = FALSE) {
   // use drupal's default node view:
   if (!$teaser) {
@@ -260,11 +250,11 @@ function chado_analysis_kegg_view($node, $teaser = FALSE, $page = FALSE) {
 }
 
 
-/*******************************************************************************
+/**
  * HOOK: Implementation of hook_nodeapi()
-* Display library information for associated features or organisms
-* This function also provides contents for indexing
-*/
+ * Display library information for associated features or organisms
+ * This function also provides contents for indexing
+ */
 function tripal_analysis_kegg_node_view($node, $view_mode, $langcode) {
   switch ($node->type) {
     case 'chado_analysis_kegg':
