@@ -9,17 +9,14 @@ if($has_results) {
   </div> <?php
 }
   
-print tripal_set_message("Administrators, if there are no KEGG reports available, you must:
+$message = 'Administrators, if there are no KEGG reports available, you must:
     <ul>
-      <li>Create a <a href=\"" . url('node/add/chado-analysis-kegg') . "\" target=\"_blank\">KEGG analysis page</a>.</li>
-      <li>Populate the <a href=\"" . url('admin/tripal/schema/mviews'); . "\" target=\"_blank\">kegg_by_organism</a> materialized view</li>
-      <li>Ensure the user <a href=\"" . url('admin/people/permissions'). "\"> has permission</a> to view the KEGG analysis content</li>
+      <li>Create a ' . l('KEGG analysis page', 'node/add/chado-analysis-kegg', array('attributes' => array('tareget' => '_blank'))) . '</li>
+      <li>Populate the ' . l('kegg_by_organism','admin/tripal/schema/mviews', array('attributes' => array('tareget' => '_blank'))) . ' materialized view</li>
+      <li>Ensure the user ' . l('has permission','admin/people/permissions', array('attributes' => array('tareget' => '_blank'))) . 'to view the KEGG analysis content</li>
       <li>Refresh this page</li>
     </ul> 
     </p>
-    This page will not appear to site visitors unless the KEGG data is present.", TRIPAL_INFO, array('return_html' => 1)); 
+    This page will not appear to site visitors unless the KEGG data is present.';
 
-
-
-
-
+print tripal_set_message($message, TRIPAL_INFO, array('return_html' => 1)); 

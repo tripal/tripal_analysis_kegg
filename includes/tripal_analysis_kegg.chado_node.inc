@@ -130,15 +130,27 @@ function chado_analysis_kegg_form($node, $form_state) {
 function chado_analysis_kegg_validate($node, &$form, &$form_state) {
   // use the analysis parent to validate the node
   tripal_analysis_validate($node, $form, $form_state);
+  
+  // trim character fields
+  $node->hierfile   = trim($node->hierfile);
+  $node->query_type = trim($node->query_type);
+  
+  if($node->hierfile and !is_readable($node->hierfile)) {
+    form_set_error('hierfile', "Can not read KAAS hier.tar.gz output file: '$node->hierfile'. Please check file permissions or typos in the file path.");
+  }
 }
-/*******************************************************************************
+/**
  *
-*/
+ */
 function chado_analysis_kegg_insert($node) {
-
+  
   // insert the analysis. If the analysis already exist then this
   // call will link it to a new Drupa node.
   chado_analysis_insert($node);
+  
+  // trim character fields
+  $node->hierfile   = trim($node->hierfile);
+  $node->query_type = trim($node->query_type);
 
   // now add in the remaining settings as a single property but separated by bars
   tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_settings', trim($node->hierfile));
@@ -151,44 +163,17 @@ function chado_analysis_kegg_insert($node) {
 }
 
 /**
- *
+ * Update KEGG analysis
  */
-function chado_analysis_kegg_submit_job($node) {
-  global $user;
-  global $base_url;
-
-    if ($node->keggjob) {
-    $job_args[0] = $node->analysis_id;
-      $job_args[1] = $node->hierfile;
-      $job_args[2] = $base_url;
-      $job_args[3] = $node->query_re;
-      $job_args[4] = $node->query_type;
-      $job_args[5] = $node->query_uniquename;
-
-      if (is_readable($node->hierfile)) {
-      $fname = preg_replace("/.*\/(.*)/", "$1", $node->hierfile);
-      tripal_add_job("Parse KAAS output: $fname", 'tripal_analysis_kegg',
-      'tripal_analysis_kegg_parseHierFile', $job_args, $user->uid);
-    }
-    else {
-      drupal_set_message("Can not open KAAS hier.tar.gz output file. Job not scheduled.");
-    }
-  }
-}
-/**
-* Delete KEGG anlysis
-*/
-function chado_analysis_kegg_delete($node) {
-  chado_analysis_delete($node);
-}
-
-/*******************************************************************************
-      * Update KEGG analysis
-      */
 function chado_analysis_kegg_update($node) {
+  
   // insert the analysis
   chado_analysis_update($node);
 
+  // trim character fields
+  $node->hierfile   = trim($node->hierfile);
+  $node->query_type = trim($node->query_type);
+  
   // now add in the remaining settings as a single property but separated by bars
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_settings', trim($node->hierfile), 1);
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_re', trim($node->query_re), 1);
@@ -198,10 +183,41 @@ function chado_analysis_kegg_update($node) {
   // Add a job if the user wants to parse the output
   chado_analysis_kegg_submit_job($node);
 }
-/*******************************************************************************
-*  When a node is requested by the user this function is called to allow us
-*  to add auxiliary data to the node object.
-*/
+
+/**
+ * Delete KEGG anlysis
+ */
+function chado_analysis_kegg_delete($node) {
+  chado_analysis_delete($node);
+}
+
+/**
+ *
+ */
+function chado_analysis_kegg_submit_job($node) {
+  global $user;
+  global $base_url;
+
+  if ($node->keggjob) {
+    $job_args[0] = $node->analysis_id;
+    $job_args[1] = $node->hierfile;
+    $job_args[2] = $base_url;
+    $job_args[3] = $node->query_re;
+    $job_args[4] = $node->query_type;
+    $job_args[5] = $node->query_uniquename;
+
+    $fname = preg_replace("/.*\/(.*)/", "$1", $node->hierfile);
+    tripal_add_job("Parse KAAS output: $fname", 'tripal_analysis_kegg',
+      'tripal_analysis_kegg_parseHierFile', $job_args, $user->uid);
+  }
+}
+
+
+
+/**
+ *  When a node is requested by the user this function is called to allow us
+ *  to add auxiliary data to the node object.
+ */
 function chado_analysis_kegg_load($nodes) {
     
   // load the default set of analysis fields

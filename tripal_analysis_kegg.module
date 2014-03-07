@@ -21,22 +21,7 @@ function tripal_analysis_kegg_init() {
 */
 function tripal_analysis_kegg_menu() {
 
-  $items['brite/%'] = array(
-      'title' => t('KEGG BRITE'),
-      'page callback' => 'tripal_analysis_kegg_brite',
-      'page arguments' => array(1, 2),
-      'access arguments' => array('access content'),
-      'type' => MENU_CALLBACK
-  );
-  $items['tripal_analysis_kegg_org_report/%'] = array(
-      'path' => 'tripal_analysis_kegg_org_report',
-      'title' => t('Analysis KEGG report'),
-      'page callback' => 'tripal_analysis_kegg_org_report',
-      'page arguments' => array(1),
-      'access arguments' => array('access chado_analysis_kegg content'),
-      'type' => MENU_CALLBACK
-  );
-  
+  // ajax and non-javascript callbacks for retrieving KEGG report data
   $items['tripal_analysis_kegg/report/nojs/%/%'] = array(
     'page callback' => 'tripal_analysis_kegg_brite_ajax_update',
     'page arguments' => array(3, 4),
@@ -172,257 +157,13 @@ function tripal_analysis_kegg_theme($existing, $type, $theme, $path) {
   return $items;
 }
 
-
-
 /**
- *
- */
-
-function tripal_analysis_kegg_org_report($analysis_id) {
-  $content = tripal_analysis_kegg_full_report($analysis_id);
-  $opt = array($content);
-  return drupal_json($opt);
-}
-
-/*******************************************************************************
- * Tripal Kegg administrative setting form. This function is called by
-* tripal_analysis module which asks for an admin form to show on the page
-*/
-function tripal_analysis_kegg_get_settings() {
-  // Get an array of node types with internal names as keys
-  $options = node_get_types('names');
-  // Add 'chado_feature' to allowed content types for showing kegg results
-  $allowedoptions ['chado_feature'] = "Show KEGG results on feature pages";
-  $allowedoptions ['chado_analysis_kegg'] = "Show KEGG BRITE results on the analysis page.";
-  $allowedoptions ['chado_organism'] = "Show KEGG BRITE results on the organism pages.";
-
-  $form['description'] = array(
-      '#type' => 'item',
-      '#value' => t("Some chado features were analyzed by KEGG automatic annotation server (KAAS). This option allows user to display the kegg analysis results. Please read user manual for storage and display of kegg files. Check the box to enable the analysis results. Uncheck to disable it."),
-      '#weight' => 0,
-  );
-
-  $form['tripal_analysis_kegg_setting'] = array(
-      '#type' => 'checkboxes',
-      '#options' => $allowedoptions,
-      '#default_value' => variable_get('tripal_analysis_kegg_setting',
-          array('chado_feature', 'chado_analysis_kegg')),
-  );
-
-  $settings->form = $form;
-  $settings->title = "Tripal Kegg";
-  return $settings;
-}
-/************************************************************************
+ * 
+ * @param unknown $node
  */
 function tripal_analysis_kegg_organism_results($node) {
   $node = node_load($node);
   return tripal_analysis_kegg_organism_add($node);
-}
-/************************************************************************
- */
-function tripal_analysis_kegg_load_feature_terms($feature) {
-
-  $feature_id = $feature->feature_id;
-  $results = array();
-   
-  // Get the KEGG orthlogs for this feature
-  $values = array(
-    'feature_id' => $feature_id,
-    'cvterm_id' => array(
-      'cv_id' => array(
-        'name' => 'KEGG_ORTHOLOGY'
-      ),
-    ),
-  );
-  $options = array('return_array' => 1);
-  $results['KO'] = tripal_core_generate_chado_var('feature_cvterm', $values, $options);
-
-  // Get the KEGG pathways for this feature
-  $values = array(
-    'feature_id' => $feature_id,
-    'cvterm_id' => array(
-      'cv_id' => array(
-         'name' => 'KEGG_PATHWAY'
-      ),
-    ),
-  );
-  $results['PATH'] = tripal_core_generate_chado_var('feature_cvterm', $values, $options);
-  
-  // unfortunatly, these terms were stored in the featureprop table at one point
-  // in the life of this module.  This was incorrect.  However, for backwards
-  // compatibility we will look for orthologs and pathways stored in the featureprop
-  // table and add those to our list.
-  $values = array(
-    'feature_id' => $feature_id,
-    'type_id' => array(
-        'cv_id' => array(
-            'name' => 'KEGG_ORTHOLOGY'
-        ),
-    ),
-  );
-  $props = tripal_core_generate_chado_var('featureprop', $values, $options);
-  foreach ($props as $prop) {
-    $found = 0;
-    foreach ($results['KO'] as $fcvterm) {
-      if ($prop->type_id->cvterm_id == $fcvterm->cvterm_id->cvterm_id) {
-        $found = 1;
-      }      
-    }
-    if (!$found) {
-      // we did not find the term in the feature_cvterm records so change this property
-      // to have a cvterm_id rather than a type_id and mark this as found        
-      $prop->cvterm_id = $prop->type_id;
-      $results['KO'][] = $prop;
-    }
-  }
-  
-  // now do the same for the pathways
-  $values = array(
-    'feature_id' => $feature_id,
-    'type_id' => array(
-        'cv_id' => array(
-            'name' => 'KEGG_PATHWAY'
-        ),
-    ),
-  );
-  $props = tripal_core_generate_chado_var('featureprop', $values, $options);
-  foreach ($props as $prop) {
-    $found = 0;
-    foreach ($results['PATH'] as $fcvterm) {
-      if ($prop->type_id->cvterm_id == $fcvterm->cvterm_id->cvterm_id) {
-        $found = 1;
-      }      
-    }
-    if (!$found) {
-      // we did not find the term in the feature_cvterm records so change this property
-      // to have a cvterm_id rather than a type_id and mark this as found        
-      $prop->cvterm_id = $prop->type_id;
-      $results['PATH'][] = $prop;
-    }
-  }
-  return $results;
-}
-
-/**
- * This function is kept for backwards compatiblity with KEGG results
- * stored using the 6.x-0.3-0.1 version of this module.
- */
-function tripal_analysis_kegg_load_feature_terms_6_x_0_3($feature) {
-
-  $feature_id = $feature->feature_id;
-
-  // Get the KEGG results stored using the term 'kegg_brite_data'
-  $select = array(
-      'analysisfeature_id' => array(
-          'feature_id' => $feature_id,
-      ),
-      'type_id' => array(
-          'name' => 'kegg_brite_data',
-          'cv_id' => array(
-              'name' => 'tripal'
-          ),
-      ),
-  );
-  $afeatureprops = tripal_core_chado_select('analysisfeatureprop', array('*'), $select);
-  if (!$afeatureprops) {
-    return;
-  }
-
-  // iterate through all of the KEGG properties for this feature
-  $results = array();
-  foreach ($afeatureprops as $index => $afeatureprop) {
-
-    // get the analysis feature record
-    $analysisfeature_arr = tripal_core_chado_select('analysisfeature', array('analysis_id'),
-        array('analysisfeature_id' => $afeatureprop->analysisfeature_id));
-    $analysisfeature = $analysisfeature_arr[0];
-
-    // get the analysis record and the analysis_id
-    $analysis = tripal_core_generate_chado_var('analysis',
-        array('analysis_id' => $analysisfeature->analysis_id));
-    $analysis_id = $analysis->analysis_id;
-
-    $results[$analysis_id]['analysis'] = $analysis;
-  }
-
-  // now get all the terms for each analysis
-  foreach ($results as $analysis_id => $arr) {
-    $select = array(
-        'analysisfeature_id' => array(
-            'analysis_id' => $analysis_id,
-            'feature_id' => $feature_id,
-        ),
-        'type_id' => array(
-            'name' => 'kegg_brite_data',
-            'cv_id' => array(
-                'name' => 'tripal',
-            ),
-        ),
-    );
-    $terms = tripal_core_chado_select('analysisfeatureprop', array('*'), $select);
-    foreach ($terms as $term) {
-      $results[$analysis_id]['terms'][] = $term->value;
-    }
-  }
-
-  return $results;
-}
-/**
- * 
- * @param $form
- * @param $form_state
- * @param $node
- * 
- */
-function tripal_analysis_kegg_select_form($form, $form_state, $node) {
-
-  $form = array();
-  // find analyses that have KEGG terms
-  $sql = "
-    SELECT *
-    FROM {kegg_by_organism} KBO
-    WHERE organism_id = :organism_id
-    ORDER BY analysis_id DESC
-  ";
-  
-  $results = chado_query($sql, array(':organism_id' => $node->organism->organism_id));
-  
-
-  $analyses = array();
-  $analyses[''] = '';
-  while ($analysis = $results->fetchObject()) {
-    # check to see if the user has permission to see this analysis
-    $nid = chado_get_nid_from_id('analysis', $analysis->analysis_id);
-    $anode = node_load($nid);
-    if (node_access("view", $anode)) {
-      $analyses[$analysis->analysis_id] = "$analysis->analysis_name";
-    }
-  }
-
-  global $base_url;
-  // we need to set some hidden values for the javascript to use
-  $form['theme_dir'] = array(
-      '#type' => 'hidden',
-      '#value' => drupal_get_path('theme', 'tripal'),
-  );
-  $form['base_url'] = array(
-      '#type' => 'hidden',
-      '#value' => $base_url,
-  );
-  // now generate the select box
-  global $base_url;
-  $theme_dir = drupal_get_path('theme', 'tripal');
-  $form['tripal_analysis_kegg_select'] = array(
-      '#title' => t('Select a KEGG report to view'),
-      '#description' => t('Any analysis with KEGG results related to this organism are available for viewing. For further information, see the analysis information page.'),
-      '#type'  => 'select',
-      '#options' => $analyses,
-      '#attributes' => array(
-          'onchange' => "tripal_analysis_kegg_org_report(this.options[this.selectedIndex].value, '" . $base_url . "', '" . $theme_dir . "')"
-      ),
-  );
-  return $form;
 }
 
 /**
@@ -432,12 +173,11 @@ function tripal_analysis_kegg_select_form($form, $form_state, $node) {
  * @param $form_state
  * @param $form_id
  *
- *
  */
 function tripal_analysis_kegg_form_alter(&$form, &$form_state, $form_id) {
 
   if ($form_id == "chado_analysis_kegg_node_form") {
-    // turn of preview button for insert/updates
+    // turn off preview button for insert/updates
     $form['actions']['preview']['#access'] = FALSE;
   }
 }
