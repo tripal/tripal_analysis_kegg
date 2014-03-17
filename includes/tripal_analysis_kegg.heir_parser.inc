@@ -1,135 +1,147 @@
 <?php
 
-/********************************************************************************
+/**
  * @file
-* Parser and loader for KEGG/KAAS analysis result
-*/
+ * Parser and loader for KEGG/KAAS analysis result
+ */
 
 function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     $query_re, $query_type, $query_uniquename, $job_id) {
 
-  // If user input a file (e.g. hier.tar.gz), decompress it first
-  if (is_file($hierfile)) {
-    print "Unpacking heir file...\n";
-    // generate a unique directory name for extracting and parsing the file
-    $data_dir = sys_get_temp_dir() . "/" . uniqid();
-    mkdir($data_dir);
-    $stderr = shell_exec("cd $data_dir; tar -zxf $hierfile;");
-    if ($stderr) {
-      watchdog('tr_kegg_parse',"ERROR: %err", array('%err' => $stderr), 'error');
+  $transaction = db_transaction();
+  print "\nNOTE: Loading of this KEGG/KAAS heir file is performed using a database transaction. \n" .
+      "If the load fails or is terminated prematurely then the entire set of \n" .
+      "insertions/updates is rolled back and will not be found in the database\n\n";
+  try {
+  
+    // If user input a file (e.g. hier.tar.gz), decompress it first
+    if (is_file($hierfile)) {
+      print "Unpacking heir file...\n";
+      // generate a unique directory name for extracting and parsing the file
+      $data_dir = sys_get_temp_dir() . "/" . uniqid();
+      mkdir($data_dir);
+      $stderr = shell_exec("cd $data_dir; tar -zxf $hierfile;");
+      if ($stderr) {
+        watchdog('tr_kegg_parse',"ERROR: %err", array('%err' => $stderr), 'error');
+        exit;
+      }
+      // now get the uncompressed directory name.  There should only be one
+      // other directory in our temp data directory so get that
+      $dhandle = @opendir($data_dir);
+      while ($dir = readdir($dhandle)) {
+        if (strcmp($dir, '.')==0 or strcmp($dir, '..')==0) {
+          continue;
+        }
+        $hierdir = $data_dir . "/$dir";
+      }
+    }
+    // Otherwise, treat it as a directory
+    else {
+      $hierdir = $hierfile;
+    }
+    print "Counting Files...\n";
+    $dir_handle = @opendir($hierdir) or die("Unable to open unpacked KEGG heir directory: $hierdir\n");
+    $total_files = count(glob($hierdir . '/*.keg'));
+  
+  
+    // Remove the analysis features for this analysis
+    // we will rebuild them from just this parsing
+    $select =  array('analysis_id' => $analysis_id);
+    if (!tripal_core_chado_delete('analysisfeature', $select)) {    
+      watchdog('tr_kegg_parse',"ERROR: Unable to clear previous results", array(), 'error');    
       exit;
     }
-    // now get the uncompressed directory name.  There should only be one
-    // other directory in our temp data directory so get that
-    $dhandle = @opendir($data_dir);
-    while ($dir = readdir($dhandle)) {
-      if (strcmp($dir, '.')==0 or strcmp($dir, '..')==0) {
-        continue;
-      }
-      $hierdir = $data_dir . "/$dir";
+     
+    // remove the analysis BRITE_TERMS from the analysisprop table
+    print "Preparing database...\n";
+    $sql = "
+      DELETE FROM {analysisprop}
+      WHERE analysis_id = :analysis_id and
+        type_id IN (
+          SELECT cvterm_id
+          FROM {cvterm} CVT 
+            INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
+          WHERE CV.name='KEGG_BRITE')";
+    $success = chado_query($sql, array(':analysis_id' => $analysis_id));
+    if (!$success) {
+      watchdog('tr_kegg_parse',"ERROR: Unable to clear previous analysisprop results.", array(), 'error'); 
+      exit;
     }
-  }
-  // Otherwise, treat it as a directory
-  else {
-    $hierdir = $hierfile;
-  }
-  print "Counting Files...\n";
-  $dir_handle = @opendir($hierdir) or die("Unable to open unpacked KEGG heir directory: $hierdir\n");
-  $total_files = count(glob($hierdir . '/*.keg'));
-
-
-  // Remove the analysis features for this analysis
-  // we will rebuild them from just this parsing
-  $select =  array('analysis_id' => $analysis_id);
-  if (!tripal_core_chado_delete('analysisfeature', $select)) {    
-    watchdog('tr_kegg_parse',"ERROR: Unable to clear previous results", array(), 'error');    
-    exit;
-  }
-   
-  // remove the analysis BRITE_TERMS from the analysisprop table
-  print "Preparing database...\n";
-  $sql = "
-    DELETE FROM {analysisprop}
-    WHERE analysis_id = :analysis_id and
-      type_id IN (
-        SELECT cvterm_id
-        FROM {cvterm} CVT 
-          INNER JOIN {cv} CV on CVT.cv_id = CV.cv_id
-        WHERE CV.name='KEGG_BRITE')";
-  $success = chado_query($sql, array(':analysis_id' => $analysis_id));
-  if (!$success) {
-    watchdog('tr_kegg_parse',"ERROR: Unable to clear previous analysisprop results.", array(), 'error'); 
-    exit;
-  }
-
-  // iterate through the files in the directory
-  while ($file = readdir($dir_handle)) {        
-    
-    if (preg_match("/^.*\.keg/", $file)) {     
-      $no_file++;
-       
-      # $hierarchy variable will be set in tripal_analysis_kegg_parse_kegg_file()
-      $results = tripal_analysis_kegg_parse_kegg_file("$hierdir/$file", $hierarchy,
-          $analysis_id, $base_path, $query_re, $query_type, $query_uniquename, $no_file, 
-          $total_files);
-
-      # add the item to the database
-      if (count($results) > 0) {
-
-        // Get type_id for the BRITE term
-        $values = array(
-          'cv_id' => array(
-             'name' => 'KEGG_BRITE'
-           ),
-          'name' => $hierarchy,
-        );
-        $options = array('statement_name' => 'sel_cvterm_cvna');
-        $brite_term = tripal_core_chado_select('cvterm', array('cvterm_id'), $values, $options);
-        if (!$brite_term or count($brite_term) == 0) {
-          watchdog('tr_kegg_parse', "ERROR: Cannot find hierarchy cvterm: '%heirarchy'", 
-            array('%heirarchy' => $hierarchy), 'error');
-          exit;
-        }
-        $brite_cvterm_id = $brite_term[0]->cvterm_id;
-
-        // KEGG results are returned in an array format, however
-        // to make display a bit easier on the web using CSS, the array
-        // will be reformated within a <ul> HTML heirarchy and stored
-        // in the analysisprop table.
-        $content = '<ul>';
-        tripal_analysis_kegg_array2list($results, $content, $i);
-        $content .= '</ul>';
-
-        // Replace all single quote as HTML code before insert
-        $content = preg_replace("/\'/", "&#39;", $content);
-
-        // Insert the value
-        $values = array(
-          'analysis_id' => $analysis_id,
-          'type_id' => $brite_cvterm_id,
-          'value' => $content,
-        );
-        $options = array('statement_name' => 'ins_analysisprop_antyva');
-        $success = tripal_core_chado_insert('analysisprop', $values, $options);
-        if (!$success) {
-          watchdog('tr_kegg_parse',"ERROR: Cannot add '%heirarchy' results to the database.",
-            array('%heirarchy' => $hierarchy), 'error');
-          exit;
-        }
-      }
-    }
-  }  
-    
-  closedir($dir_handle);
-
-  // If user input a file, remove decompressed files after parsing
-  if (is_file($hierfile)) {
-    $stderr = shell_exec("rm -r $data_dir;");
-    if($stderr) {
-      watchdog('tr_kegg_parse', "ERROR: %err", array('%err' => $stderr), 'error');
-    }
-  }
   
+    // iterate through the files in the directory
+    while ($file = readdir($dir_handle)) {        
+      
+      if (preg_match("/^.*\.keg/", $file)) {     
+        $no_file++;
+         
+        # $hierarchy variable will be set in tripal_analysis_kegg_parse_kegg_file()
+        $results = tripal_analysis_kegg_parse_kegg_file("$hierdir/$file", $hierarchy,
+            $analysis_id, $base_path, $query_re, $query_type, $query_uniquename, $no_file, 
+            $total_files);
+  
+        # add the item to the database
+        if (count($results) > 0) {
+  
+          // Get type_id for the BRITE term
+          $values = array(
+            'cv_id' => array(
+               'name' => 'KEGG_BRITE'
+             ),
+            'name' => $hierarchy,
+          );
+          $options = array('statement_name' => 'sel_cvterm_cvna');
+          $brite_term = tripal_core_chado_select('cvterm', array('cvterm_id'), $values, $options);
+          if (!$brite_term or count($brite_term) == 0) {
+            watchdog('tr_kegg_parse', "ERROR: Cannot find hierarchy cvterm: '%heirarchy'", 
+              array('%heirarchy' => $hierarchy), 'error');
+            exit;
+          }
+          $brite_cvterm_id = $brite_term[0]->cvterm_id;
+  
+          // KEGG results are returned in an array format, however
+          // to make display a bit easier on the web using CSS, the array
+          // will be reformated within a <ul> HTML heirarchy and stored
+          // in the analysisprop table.
+          $content = '<ul>';
+          tripal_analysis_kegg_array2list($results, $content, $i);
+          $content .= '</ul>';
+  
+          // Replace all single quote as HTML code before insert
+          $content = preg_replace("/\'/", "&#39;", $content);
+  
+          // Insert the value
+          $values = array(
+            'analysis_id' => $analysis_id,
+            'type_id' => $brite_cvterm_id,
+            'value' => $content,
+          );
+          $options = array('statement_name' => 'ins_analysisprop_antyva');
+          $success = tripal_core_chado_insert('analysisprop', $values, $options);
+          if (!$success) {
+            watchdog('tr_kegg_parse',"ERROR: Cannot add '%heirarchy' results to the database.",
+              array('%heirarchy' => $hierarchy), 'error');
+            exit;
+          }
+        }
+      }
+    }  
+      
+    closedir($dir_handle);
+  
+    // If user input a file, remove decompressed files after parsing
+    if (is_file($hierfile)) {
+      $stderr = shell_exec("rm -r $data_dir;");
+      if($stderr) {
+        watchdog('tr_kegg_parse', "ERROR: %err", array('%err' => $stderr), 'error');
+      }
+    }
+  }
+  catch (Exception $e) {
+    print "\n"; // make sure we start errors on new line
+    watchdog_exception('tr_kegg_parse', $e);
+    $transaction->rollback();
+    print "FAILED: Rolling back database changes...\n";
+  }
   print "\nDone\n";
   return;
 }
