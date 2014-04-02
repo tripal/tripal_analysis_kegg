@@ -1,7 +1,7 @@
 name = Tripal KEGG
 description = An analysis module for adding, editing, and displaying KEGG/KAAS analysis results.
 core = 7.x
-version = 7.x-2.x-tripal_v2.x
+version = 7.x-2.0.1-alpha
 project = tripal_analysis_kegg
 package = Tripal Extensions
 dependencies[] = tripal_core
