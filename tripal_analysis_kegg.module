@@ -124,34 +124,34 @@ function tripal_analysis_kegg_theme($existing, $type, $theme, $path) {
 
   $core_path = drupal_get_path('module', 'tripal_core');
   $items = array (
-      'node__chado_analysis_kegg' => array (
-          'template' => 'node--chado-generic',
-          'render element' => 'node',
-          'base hook' => 'node',
-          'path' => "$core_path/theme"
-      ),
-      'tripal_analysis_kegg_base' => array(
-          'variables' => array('node' => NULL),
-          'template' => 'tripal_analysis_kegg_base',
-          'path' => "$path/theme/tripal_analysis_kegg",
-      ),
-      'tripal_analysis_kegg_teaser' => array(
-          'variables' => array('node' => NULL),
-          'template' => 'tripal_analysis_kegg_teaser',
-          'path' => "$path/theme/tripal_analysis_kegg",
-      ),
-      'tripal_analysis_kegg_report' => array(
-          'variables' => array('node' => NULL),
-          'template' => 'tripal_analysis_kegg_report',
-          'path' => "$path/theme/tripal_analysis_kegg",
-      ),
-
-      // tripal_organism theme
-      'tripal_organism_kegg_summary' => array(
-          'variables' => array('node' => NULL),
-          'template' => 'tripal_organism_kegg_summary',
-          'path' => "$path/theme/tripal_organism",
-      ),
+    'node__chado_analysis_kegg' => array (
+      'template' => 'node--chado-generic',
+      'render element' => 'node',
+      'base hook' => 'node',
+      'path' => "$core_path/theme/templates"
+    ),
+    'tripal_analysis_kegg_base' => array(
+      'variables' => array('node' => NULL),
+      'template' => 'tripal_analysis_kegg_base',
+      'path' => "$path/theme/templates",
+    ),
+    'tripal_analysis_kegg_teaser' => array(
+      'variables' => array('node' => NULL),
+      'template' => 'tripal_analysis_kegg_teaser',
+      'path' => "$path/theme/templates",
+    ),
+    'tripal_analysis_kegg_report' => array(
+      'variables' => array('node' => NULL),
+      'template' => 'tripal_analysis_kegg_report',
+      'path' => "$path/theme/templates",
+    ),
+    
+    // tripal_organism theme
+    'tripal_organism_kegg_summary' => array(
+      'variables' => array('node' => NULL),
+      'template' => 'tripal_organism_kegg_summary',
+      'path' => "$path/theme/templates",
+    ),
   );
   
   return $items;
