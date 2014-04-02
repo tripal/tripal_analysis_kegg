@@ -42,23 +42,23 @@ function tripal_analysis_kegg_menu() {
 * want permissionis that protect creation, editing and deleting of chado
 * data objects
 */
-function tripal_analysis_kegg_permissions() {
+function tripal_analysis_kegg_permission() {
   return array(
       'access chado_analysis_kegg content' => array(
-        'title' => t('View Chado Analysis Blast'),
-        'description' => t('Allow users to view chado analysis blast pages.'),
+        'title' => t('View Chado Analysis KEGG'),
+        'description' => t('Allow users to view chado analysis kegg pages.'),
       ),
       'create chado_analysis_kegg content'=> array(
-        'title' => t('Create Chado Analysis Blast'),
-        'description' => t('Allow users to create new chado analysis blast pages.'),
+        'title' => t('Create Chado Analysis KEGG'),
+        'description' => t('Allow users to create new chado analysis kegg pages.'),
       ),
       'delete chado_analysis_kegg content'=> array(
-        'title' => t('Delete Chado Analysis Blast'),
-        'description' => t('Allow users to delete chado analysis blast pages.'),
+        'title' => t('Delete Chado Analysis KEGG'),
+        'description' => t('Allow users to delete chado analysis kegg pages.'),
       ),
       'edit chado_analysis_kegg content' => array(
-      'title' => t('Edit Chado Analysis Blast'),
-      'description' => t('Allow users to edit chado analysis blast pages.'),
+      'title' => t('Edit Chado Analysis KEGG'),
+      'description' => t('Allow users to edit chado analysis kegg pages.'),
     ),
   );
 }
