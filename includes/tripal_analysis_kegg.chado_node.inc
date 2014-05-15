@@ -7,14 +7,24 @@
 function tripal_analysis_kegg_node_info() {
   $nodes = array();
   $nodes['chado_analysis_kegg'] = array(
-      'name' => t('Analysis: KEGG'),
-      'base' => 'chado_analysis_kegg',
-      'description' => t('Results from a KEGG/KAAS analysis'),
-      'has_title' => FALSE,
-      'title_label' => t('Analysis: KEGG'),
-      'has_body' => FALSE,
-      'body_label' => t('KEGG Analysis Description'),
-      'locked' => TRUE
+    'name' => t('Analysis: KEGG'),
+    'base' => 'chado_analysis_kegg',
+    'description' => t('Results from a KEGG/KAAS analysis'),
+    'has_title' => FALSE,
+    'title_label' => t('Analysis: KEGG'),
+    'has_body' => FALSE,
+    'body_label' => t('KEGG Analysis Description'),
+    'locked' => TRUE,
+    'chado_node_api' => array(
+      'base_table' => 'analysis',
+      'hook_prefix' => 'chado_analysis_kegg',
+      'record_type_title' => array(
+        'singular' => t('InterPro Analysis'),
+        'plural' => t('InterPro Analyses')
+      ),
+      // this module will not sync.  that will be handled by the
+      // analysis module
+    )
   );
   return $nodes;
 }
@@ -240,6 +250,9 @@ function chado_analysis_kegg_load($nodes) {
     $analysis->tripal_analysis_kegg->query_type = is_object($query_type)  ? $query_type->value : '';
     $analysis->tripal_analysis_kegg->query_uniquename = is_object($query_uniquename)  ? $query_uniquename->value : '';
     
+    // Now get the title
+    $node->title = chado_get_node_title($node);
+    
     $nodes[$nid]->analysis = $analysis;
   }
 }
@@ -304,4 +317,14 @@ function tripal_analysis_kegg_node_view($node, $view_mode, $langcode) {
       }
       break;
   }
+}
+
+/**
+ * Implements [content_type]_chado_node_default_title_format().
+ *
+ * Defines a default title format for the Chado Node API to set the titles on
+ * Chado Analysis nodes based on chado fields.
+ */
+function chado_analysis_kegg_chado_node_default_title_format() {
+  return '[analysis.name]';
 }
