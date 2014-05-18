@@ -328,3 +328,51 @@ function tripal_analysis_kegg_node_view($node, $view_mode, $langcode) {
 function chado_analysis_kegg_chado_node_default_title_format() {
   return '[analysis.name]';
 }
+
+/**
+ * Implements hook_node_insert().
+ * Acts on all content types.
+ *
+ * @ingroup tripal_analysis_kegg
+ */
+function tripal_analysis_kegg_node_insert($node) {
+
+  switch ($node->type) {
+    case 'chado_analysis_kegg':
+
+      // build the analysis variable
+      $analysis_id = chado_get_id_from_nid('analysis', $node->nid);
+      $values = array('analysis_id' => $analysis_id);
+      $analysis = chado_generate_var('analysis', $values);
+      $node->analysis = $analysis;
+
+      // Now get the title
+      $node->title = chado_get_node_title($node);
+
+      break;
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ * Acts on all content types.
+ *
+ * @ingroup tripal_analysis_kegg
+ */
+function tripal_analysis_kegg_node_update($node) {
+
+  switch ($node->type) {
+    case 'chado_analysis_kegg':
+
+      // build the analysis variable
+      $analysis_id = chado_get_id_from_nid('analysis', $node->nid);
+      $values = array('analysis_id' => $analysis_id);
+      $analysis = chado_generate_var('analysis', $values);
+      $node->analysis = $analysis;
+
+      // Now get the title
+      $node->title = chado_get_node_title($node);
+
+      break;
+  }
+}
