@@ -289,20 +289,20 @@ function tripal_analysis_kegg_node_view($node, $view_mode, $langcode) {
     case 'chado_analysis_kegg':
       if ($view_mode == 'full') {
         $node->content['tripal_analysis_kegg_base'] = array(
-            '#markup' => theme('tripal_analysis_kegg_base', array('node' => $node)),
-            '#tripal_toc_id'    => 'base',
-            '#tripal_toc_title' => 'Overview',
-            '#weight' => -100,
+          '#markup' => theme('tripal_analysis_kegg_base', array('node' => $node)),
+          '#tripal_toc_id'    => 'base',
+          '#tripal_toc_title' => 'Overview',
+          '#weight' => -100,
         );
         $node->content['tripal_analysis_kegg_report'] = array(
-            '#markup' => theme('tripal_analysis_kegg_report', array('node' => $node)),
-            '#tripal_toc_id'    => 'report',
-            '#tripal_toc_title' => 'KEGG Report',
+          '#markup' => theme('tripal_analysis_kegg_report', array('node' => $node)),
+          '#tripal_toc_id'    => 'report',
+          '#tripal_toc_title' => 'KEGG Report',
         );
       }
       if ($view_mode == 'teaser') {
         $node->content['tripal_analysis_kegg_teaser'] = array(
-            '#markup' => theme('tripal_analysis_kegg_teaser', array('node' => $node)),
+          '#markup' => theme('tripal_analysis_kegg_teaser', array('node' => $node)),
         );
       }
     break;
@@ -310,9 +310,9 @@ function tripal_analysis_kegg_node_view($node, $view_mode, $langcode) {
       // Show KEGG report on the organism page
       if ($view_mode == 'full') {
         $node->content ['tripal_organism_kegg_summary'] = array (
-            '#markup' => theme('tripal_organism_kegg_summary', array('node' => $node)),
-            '#tripal_toc_id'    => 'kegg_summary',
-            '#tripal_toc_title' => 'KEGG Report' 
+          '#markup' => theme('tripal_organism_kegg_summary', array('node' => $node)),
+          '#tripal_toc_id'    => 'kegg_summary',
+          '#tripal_toc_title' => 'KEGG Report' 
         );
       }
       break;
