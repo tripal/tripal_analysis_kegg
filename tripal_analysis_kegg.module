@@ -244,7 +244,7 @@ function chado_analysis_kegg_form($node, $form_state) {
   ";
   $orgs = chado_query($sql);
   $organisms = array();
-  $orgasnism[] = '';
+  $organisms[] = '';
   while($organism = db_fetch_object($orgs)) {
     $organisms[$organism->organism_id] = $organism->genus . " " . $organism->species;
   }
