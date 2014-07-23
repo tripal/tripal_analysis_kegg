@@ -75,8 +75,9 @@ function chado_analysis_kegg_form($node, $form_state) {
     $kegg = $node->analysis->tripal_analysis_kegg;
     $query_re = $kegg->query_re;
     $query_type = $kegg->query_type;
-    $query_uniquename = $kegg->query_uniquename;    
+    $query_uniquename = $kegg->query_uniquename;
     $hierfile = $kegg->hierfile;
+    $organism_id = $kegg->organism_id;
   }
 
   $moreSettings ['kegg'] = 'KEGG Analysis Settings';
@@ -115,6 +116,26 @@ function chado_analysis_kegg_form($node, $form_state) {
           'or more sequences have the same name.'),
       '#default_value' => $query_type,
   );
+  
+  $sql = "
+    SELECT organism_id, genus, species
+    FROM {organism}
+    ORDER BY genus,species
+  ";
+  $orgs = chado_query($sql);
+  $organisms = array();
+  $organisms[] = '';
+  while($organism = $orgs->fetchObject()) {
+    $organisms[$organism->organism_id] = $organism->genus . " " . $organism->species;
+  }
+  $form['kegg']['organism_id'] = array(
+    '#type' => 'select',
+    '#title' => t('Organism'),
+    '#description' => t('Select the organism for these KEGG results. The
+        feature names in the KAAS .hier files must exist for the specified organism.'),
+    '#options' => $organisms,
+    '#default_value' => $organism_id
+  );
 
   $form['kegg']['query_uniquename'] = array(
       '#title' => t('Use Unique Name'),
@@ -132,6 +153,7 @@ function chado_analysis_kegg_form($node, $form_state) {
           'results that cannot be linked to a feature will be '.
           'discarded.'),
   );
+
   return $form;
 }
 /**
@@ -167,7 +189,8 @@ function chado_analysis_kegg_insert($node) {
   tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_re', trim($node->query_re));
   tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_type', trim($node->query_type));
   tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_uniquename', trim($node->query_uniquename));
-   
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_organism_id', $node->organism_id);
+  
   // Add a job if the user wants to parse the html output
   chado_analysis_kegg_submit_job($node);
 }
@@ -189,7 +212,8 @@ function chado_analysis_kegg_update($node) {
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_re', trim($node->query_re), 1);
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_type', trim($node->query_type), 1);
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_uniquename', trim($node->query_uniquename), 1);
-
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_organism_id', $node->organism_id);
+  
   // Add a job if the user wants to parse the output
   chado_analysis_kegg_submit_job($node);
 }
@@ -215,6 +239,7 @@ function chado_analysis_kegg_submit_job($node) {
     $job_args[3] = $node->query_re;
     $job_args[4] = $node->query_type;
     $job_args[5] = $node->query_uniquename;
+    $job_args[6] = $node->organism_id;
 
     $fname = preg_replace("/.*\/(.*)/", "$1", $node->hierfile);
     tripal_add_job("Parse KAAS output: $fname", 'tripal_analysis_kegg',
@@ -239,16 +264,18 @@ function chado_analysis_kegg_load($nodes) {
     $analysis_id = $analysis->analysis_id;
     
     // get the heirfile name
-    $hierfile         = tripal_analysis_get_property ($analysis_id, 'analysis_kegg_settings');
-    $query_re         = tripal_analysis_get_property ($analysis->analysis_id, 'analysis_kegg_query_re');
-    $query_type       = tripal_analysis_get_property ($analysis->analysis_id, 'analysis_kegg_query_type');
-    $query_uniquename = tripal_analysis_get_property ($analysis->analysis_id, 'analysis_kegg_query_uniquename');
+    $hierfile         = tripal_analysis_get_property($analysis_id, 'analysis_kegg_settings');
+    $query_re         = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_re');
+    $query_type       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_type');
+    $query_uniquename = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_uniquename');
+    $organism_id      = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_organism_id');
     
     $analysis->tripal_analysis_kegg = new stdClass();
     $analysis->tripal_analysis_kegg->hierfile = is_object($hierfile)   ? $hierfile->value : '';
     $analysis->tripal_analysis_kegg->query_re = is_object($query_re)  ? $query_re->value: '';
     $analysis->tripal_analysis_kegg->query_type = is_object($query_type)  ? $query_type->value : '';
     $analysis->tripal_analysis_kegg->query_uniquename = is_object($query_uniquename)  ? $query_uniquename->value : '';
+    $analysis->tripal_analysis_kegg->organism_id = is_object($organism_id) ? $organism_id->value : '';
     
     // Now get the title
     $node->title = chado_get_node_title($node);
