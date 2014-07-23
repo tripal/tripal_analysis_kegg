@@ -196,6 +196,7 @@ function chado_analysis_kegg_form($node, $form_state) {
   $query_re = $kegg->query_re;
   $query_type = $kegg->query_type;
   $query_uniquename = $kegg->query_uniquename;
+  $organism_id = $kegg->organism_id;
 
   $hierfile = $kegg->hierfile;
 
@@ -235,11 +236,31 @@ function chado_analysis_kegg_form($node, $form_state) {
           'or more sequences have the same name.'),
       '#default_value' => $query_type,
   );
+  
+  $sql = "
+    SELECT organism_id, genus, species
+    FROM {organism}
+    ORDER BY genus,species
+  ";
+  $orgs = chado_query($sql);
+  $organisms = array();
+  $orgasnism[] = '';
+  while($organism = db_fetch_object($orgs)) {
+    $organisms[$organism->organism_id] = $organism->genus . " " . $organism->species;
+  }
+  $form['kegg']['organism_id'] = array(
+    '#type' => 'select',
+    '#title' => t('Organism'),
+    '#description' => t('Select the organism for these KEGG results. The
+        feature names in the KAAS .hier files must exist for the specified organism.'),
+    '#options' => $organisms,
+    '#default_value' => $organism_id
+  );
 
   $form['kegg']['query_uniquename'] = array(
       '#title' => t('Use Unique Name'),
       '#type' => 'checkbox',
-      '#description' => t('Select this checboxk if the feature name in the KEGG heir file '.
+      '#description' => t('Select this checkbox if the feature name in the KEGG heir file '.
           'matches the uniquename in the database.  By default, the feature will '.
           'be mapped to the "name" of the feature.'),
       '#default_value' => $query_uniquename,
@@ -283,6 +304,7 @@ function chado_analysis_kegg_insert($node) {
     tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_re', $node->query_re);
     tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_type', $node->query_type);
     tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_query_uniquename', $node->query_uniquename);
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_organism_id', $node->organism_id);
      
     // Add a job if the user wants to parse the html output
     chado_analysis_kegg_submit_job($node);
@@ -297,19 +319,20 @@ function chado_analysis_kegg_submit_job($node) {
 
   if ($node->keggjob) {
     $job_args[0] = $node->analysis_id;
-    $job_args[1] = $node->hierfile;
+    $job_args[1] = trim($node->hierfile);
     $job_args[2] = $base_url;
-    $job_args[3] = $node->query_re;
-    $job_args[4] = $node->query_type;
-    $job_args[5] = $node->query_uniquename;
+    $job_args[3] = trim($node->query_re);
+    $job_args[4] = trim($node->query_type);
+    $job_args[5] = trim($node->query_uniquename);
+    $job_args[6] = $node->organism_id;
 
-    if (is_readable($node->hierfile)) {
-      $fname = preg_replace("/.*\/(.*)/", "$1", $node->hierfile);
+    if (is_readable(trim($node->hierfile))) {
+      $fname = preg_replace("/.*\/(.*)/", "$1", trim($node->hierfile));
       tripal_add_job("Parse KAAS output: $fname", 'tripal_analysis_kegg',
           'tripal_analysis_kegg_parseHierFile', $job_args, $user->uid);
     } 
     else {
-      drupal_set_message("Can not open KAAS hier.tar.gz output file. Job not scheduled.");
+      drupal_set_message("Can not open KAAS hier.tar.gz output file. Job not scheduled.", "error");
     }
   }
 }
@@ -332,7 +355,7 @@ function chado_analysis_kegg_update($node) {
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_re', $node->query_re, 1);
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_type', $node->query_type, 1);
   tripal_analysis_update_property($node->analysis_id, 'analysis_kegg_query_uniquename', $node->query_uniquename, 1);
-
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_kegg_organism_id', $node->organism_id);
    
   // Add a job if the user wants to parse the output
   chado_analysis_kegg_submit_job($node);
@@ -355,15 +378,18 @@ function chado_analysis_kegg_load($node) {
   $query_re        = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_re');
   $query_type      = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_type');
   $query_uniquename= tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_query_uniquename');
+  $organism_id     = tripal_analysis_get_property($analysis->analysis_id, 'analysis_kegg_organism_id');
+  
   
   if (!is_object($analysis->tripal_analysis_kegg)) {
     $analysis->tripal_analysis_kegg = new stdClass;
   }
 
-  $analysis->tripal_analysis_kegg->hierfile = $hierfile->value;
+  $analysis->tripal_analysis_kegg->hierfile        = $hierfile->value;
   $analysis->tripal_analysis_kegg->query_re        = $query_re->value;
   $analysis->tripal_analysis_kegg->query_type      = $query_type->value;
   $analysis->tripal_analysis_kegg->query_uniquename= $query_uniquename->value;
+  $analysis->tripal_analysis_kegg->organism_id     = $organism_id->value;
 
   return $additions;
 }
@@ -704,10 +730,10 @@ function tripal_analysis_kegg_full_report($analysis_id) {
    
   return "<i>Note:</i> No results available.";
 }
-/*******************************************************************************
+/**
  * Tripal Kegg administrative setting form. This function is called by
-* tripal_analysis module which asks for an admin form to show on the page
-*/
+ * tripal_analysis module which asks for an admin form to show on the page
+ */
 function tripal_analysis_kegg_get_settings() {
   // Get an array of node types with internal names as keys
   $options = node_get_types('names');
@@ -718,7 +744,11 @@ function tripal_analysis_kegg_get_settings() {
 
   $form['description'] = array(
       '#type' => 'item',
-      '#value' => t("Some chado features were analyzed by KEGG automatic annotation server (KAAS). This option allows user to display the kegg analysis results. Please read user manual for storage and display of kegg files. Check the box to enable the analysis results. Uncheck to disable it."),
+      '#value' => t("Some chado features were analyzed by KEGG automatic 
+          annotation server (KAAS). This option allows user to display the 
+          kegg analysis results. Please read user manual for storage and 
+          display of kegg files. Check the box to enable the analysis 
+          results. Uncheck to disable it."),
       '#weight' => 0,
   );
 

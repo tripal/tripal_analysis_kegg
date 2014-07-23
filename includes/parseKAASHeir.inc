@@ -6,7 +6,7 @@
 */
 
 function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
-    $query_re, $query_type, $query_uniquename, $job_id) {
+    $query_re, $query_type, $query_uniquename, $organism_id, $job_id) {
       
   // make sure we have a persistent db connection
   $connection = tripal_db_persistent_chado();
@@ -102,7 +102,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
        
       # $hierarchy variable will be set in tripal_analysis_kegg_parse_kegg_file()
       $results = tripal_analysis_kegg_parse_kegg_file("$hierdir/$file", $hierarchy,
-          $analysis_id, $base_path, $query_re, $query_type, $query_uniquename, $no_file, 
+          $analysis_id, $organism_id, $base_path, $query_re, $query_type, $query_uniquename, $no_file, 
           $total_files);
 
       # add the item to the database
@@ -196,7 +196,7 @@ function tripal_analysis_kegg_array2list($array, &$content, &$i) {
  * generated and saved to analysisfeature and analysisfeatureprop tables.
  */
 function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id,
-    $base_path, $query_re, $query_type, $query_uniquename, $no_file, $total_files) {
+    $organism_id, $base_path, $query_re, $query_type, $query_uniquename, $no_file, $total_files) {
 
   $filepos = 0;
 
@@ -255,7 +255,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id,
         $intv_read, $no_file, $total_files, $filename);
               
       $results = tripal_analysis_kegg_recurse_heir($handle, $next, $query_re,
-          $query_type, $query_uniquename, $base_path, $analysis_id, $hierarchy,
+          $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id, $hierarchy,
           $filepos, $filesize, $intv_read, $no_file, $total_files, $filename);
     }
   }
@@ -267,7 +267,7 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id,
  *
  */
 function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
-    $query_type, $query_uniquename, $base_path, $analysis_id,
+    $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id,
     $hierarchy, &$filepos, $filesize, &$intv_read, $no_file, $total_files, $file) {
   $results = array();
 
@@ -297,7 +297,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
 
     // check this line to see if it has a feature we need to keep
     $ret = tripal_analysis_kegg_check_line_handle_feature($query_re,
-        $query_type, $query_uniquename, $base_path, $analysis_id,
+        $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id,
         $hierarchy, $value, $pathway);
     if ($ret) {
       $results[] = $ret;
@@ -307,7 +307,7 @@ function tripal_analysis_kegg_recurse_heir($handle, $line, $query_re,
     if (ord($next_level) > ord($level)) {
       // now recurse
       $ret = tripal_analysis_kegg_recurse_heir($handle, $next,
-          $query_re, $query_type, $query_uniquename, $base_path, $analysis_id,
+          $query_re, $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id, 
           $hierarchy, $filepos, $filesize, $intv_read, $no_file, $total_files, $file);
       if (count($ret) > 0) {
         $results[][$value] = $ret;
@@ -411,7 +411,7 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$int
  *
  */
 function tripal_analysis_kegg_check_line_handle_feature($query_re,
-    $query_type, $query_uniquename, $base_path, $analysis_id,
+    $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id,
     $hierarchy, $value, $pathway) {
 
   // extract the features that have been mapped to the KEGG IDs
@@ -473,6 +473,10 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       $select['name'] = $feature;
       $options['statement_name'] = 'sel_feature_na';
     }
+    if ($organism_id) {
+      $select['organism_id'] = $organism_id;
+      $options['statement_name'] .= 'or';
+    }
     if ($query_type) {
       $select['type_id'] = array(
           'cv_id' => array(
@@ -481,7 +485,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
           'name' => $query_type,
       );
       $options['statement_name'] .= 'ty';
-    }    
+    }
     $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select, $options);
 
     if (count($feature_arr) > 1) {

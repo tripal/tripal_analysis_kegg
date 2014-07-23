@@ -68,25 +68,7 @@ function tripal_analysis_kegg_install() {
       ''
    );
 }
-/*******************************************************************************
- * Change the URL prefix of the 'KEGG_PATHWAY' database
- */
-function tripal_analysis_kegg_update_6101() {
 
-   // update the KEGG_PATHWAY db entry
-   tripal_db_add_db('KEGG_PATHWAY', 'KEGG PATHWAY is a collection of manually ' .
-      'drawn pathway maps representing our knowledge on the molecular interaction ' .
-      'and reaction networks.',
-      'http://www.genome.jp/kegg/pathway.html',
-      'http://www.genome.jp/dbget-bin/www_bget?ko+',
-      TRUE);
-
-   $ret = array(
-      '#finished' => 1,
-   );
-   
-   return $ret;
-}
 /*******************************************************************************
  * Provide update script for adding new cvterms
  *
@@ -103,9 +85,48 @@ function tripal_analysis_kegg_update_6000() {
    return $ret;
 }
 
-/**
-*
+
+/*******************************************************************************
+ * Change the URL prefix of the 'KEGG_PATHWAY' database
 */
+function tripal_analysis_kegg_update_6101() {
+
+  // update the KEGG_PATHWAY db entry
+  tripal_db_add_db('KEGG_PATHWAY', 'KEGG PATHWAY is a collection of manually ' .
+      'drawn pathway maps representing our knowledge on the molecular interaction ' .
+      'and reaction networks.',
+      'http://www.genome.jp/kegg/pathway.html',
+      'http://www.genome.jp/dbget-bin/www_bget?ko+',
+      TRUE);
+
+  $ret = array(
+    '#finished' => 1,
+  );
+   
+  return $ret;
+}
+/**
+ * 
+ */
+function tripal_analysis_kegg_update_6102() {
+  tripal_cv_add_cvterm(array(
+      'name' => 'analysis_kegg_organism_id', 
+      'def' => 'The organism ID of the organism to which KEGG analysis results belong.'), 
+    'tripal', 
+    0, 
+    1, 
+    'tripal'
+  );
+
+  $ret = array(
+    '#finished' => 1,
+  );
+   
+  return $ret;
+}
+/**
+ * 
+ */
 function tripal_analysis_kegg_add_cvterms() {
    tripal_cv_add_cvterm(array('name' => 'analysis_kegg_settings', 'def' => 'Settings of a KEGG analysis, Currently include only the heir.tar.gz file name & path.'), 'tripal', 0, 1, 'tripal');
    tripal_cv_add_cvterm(array('name' => 'kegg_brite_data', 'def' => 'This term is intended for use in the analysisfeatureprop table to store the KAAS results data.'), 'tripal', 0, 1, 'tripal');
@@ -113,6 +134,7 @@ function tripal_analysis_kegg_add_cvterms() {
    tripal_cv_add_cvterm(array('name' => 'analysis_kegg_query_type', 'def' => 'The feature type (e.g. mRNA, polypeptide) of the query input file. This type is used to identify the query feature when multiple features have the same name'), 'tripal', 0, 1, 'tripal');
    tripal_cv_add_cvterm(array('name' => 'analysis_kegg_query_uniquename', 'def' => 'Indicates if the matched name in the query definition line of the blast results is feature uniquename'), 'tripal', 0, 1, 'tripal');
    tripal_cv_add_cvterm(array('name' => 'analysis_kegg_output_keywords', 'def' => 'Selected keywords for kegg html output which are indexed for search.'), 'tripal', 0, 1, 'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_kegg_organism_id', 'def' => 'The organism ID of the organism to which KEGG analysis results belong.'), 'tripal', 0, 1, 'tripal');
 }
 /*******************************************************************************
 * Implementation of hook_uninstall()
