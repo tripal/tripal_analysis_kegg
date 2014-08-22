@@ -23,26 +23,45 @@ function tripal_analysis_kegg_install() {
    // make sure the KEGG databases we will be using exist.  The list of 
    // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
    // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY
-   tripal_db_add_db('KEGG_PATHWAY', 'KEGG PATHWAY is a collection of manually ' .
-      'drawn pathway maps representing our knowledge on the molecular interaction ' .
-      'and reaction networks.',
-      'http://www.genome.jp/kegg/pathway.html',
-      'http://www.genome.jp/dbget-bin/www_bget?ko+');
-   tripal_db_add_db('KEGG_BRITE', 'KEGG BRITE is a collection of hierarchical ' .
-      'classifications from KEGG.',
-      'http://www.genome.jp/kegg/brite.html',
-      'http://www.genome.jp/kegg-bin/get_htext?');
-   tripal_db_add_db('KEGG_ORTHOLOGY', 'The KEGG Orthology (KO) system ' .
-      'consists of manually defined ortholog groups that correspond to ' .
-      'pathways, BRITE hierarchys and modules',
-      'http://www.genome.jp/kegg/ko.html',
-      'http://www.genome.jp/dbget-bin/www_bget?ko:');  
+   tripal_insert_db(array(
+     'name' => 'KEGG_PATHWAY', 
+     'description' => 'KEGG PATHWAY is a collection of manually ' .
+         'drawn pathway maps representing our knowledge on the molecular interaction ' .
+         'and reaction networks.',
+     'url' => 'http://www.genome.jp/kegg/pathway.html',
+     'urlprefix' =>  'http://www.genome.jp/dbget-bin/www_bget?ko+'
+   ));
+   tripal_insert_db(array(
+     'name' => 'KEGG_BRITE', 
+     'description' => 'KEGG BRITE is a collection of hierarchical ' .
+         'classifications from KEGG.',
+     'url' => 'http://www.genome.jp/kegg/brite.html',
+     'urlprefix' =>   'http://www.genome.jp/kegg-bin/get_htext?'
+   ));
+   tripal_insert_db(array(
+     'name' => 'KEGG_ORTHOLOGY', 
+     'description' => 'The KEGG Orthology (KO) system ' .
+         'consists of manually defined ortholog groups that correspond to ' .
+        'pathways, BRITE hierarchys and modules',
+     'url' => 'http://www.genome.jp/kegg/ko.html',
+     'urlprefix' =>  'http://www.genome.jp/dbget-bin/www_bget?ko:'
+   ));
+   tripal_insert_db(array(
+     'name' => 'KEGG_MODULE',
+     'description' => 'KEGG MODULE is a collection of manually '.
+         'defined functional units, called KEGG modules and identified by the '.
+         'M numbers, used for annotation and biological interpretation of '.
+         'sequenced genomes',
+     'url' => 'http://www.genome.jp/kegg/module.html',
+     'urlprefix' => 'http://www.genome.jp/kegg-bin/show_module?',
+   ));
 
    // add in the controlled vocabularies for the KEGG database. 
-   tripal_cv_add_cv('KEGG_PATHWAY', 'Holds terms from the KEGG PATHWAY database.');
-   tripal_cv_add_cv('KEGG_BRITE', 'Holds terms from the KEGG BRITE database.');
-   tripal_cv_add_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
-   
+   tripal_insert_cv('KEGG_PATHWAY','Holds terms from the KEGG PATHWAY database.');
+   tripal_insert_cv('KEGG_BRITE', 'Holds terms from the KEGG BRITE database.');
+   tripal_insert_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
+   tripal_insert_cv('KEGG_MODULE',  'Holds terms from the KEGG MODULE database.');
+
    tripal_analysis_kegg_add_mview_kegg_by_organism ();
 }
 
@@ -203,6 +222,28 @@ function tripal_analysis_kegg_update_7201() {
   }
   catch (\PDOException $e) {
     $error = $e->getMessage();
-    throw new DrupalUpdateException('Failed to complete update' . $error);
+    throw new DrupalUpdateException('Failed to complete update: ' . $error);
+  }
+}
+
+/**
+ * Adds the KEGG Module database and vocabulary
+ */
+function tripal_analysis_kegg_update_7202() {
+  try {
+    tripal_insert_db(array(
+      'name' => 'KEGG_MODULE',
+      'description' => 'KEGG MODULE is a collection of manually '.
+      'defined functional units, called KEGG modules and identified by the '.
+      'M numbers, used for annotation and biological interpretation of '.
+      'sequenced genomes',
+      'url' => 'http://www.genome.jp/kegg/module.html',
+      'urlprefix' => 'http://www.genome.jp/kegg-bin/show_module?',
+    ));
+    tripal_insert_cv('KEGG_MODULE',  'Holds terms from the KEGG MODULE database.');
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Failed to complete update: ' . $error);
   }
 }
