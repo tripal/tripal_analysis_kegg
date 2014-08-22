@@ -69,77 +69,76 @@ if ($results[KO] or $results[PATH] or $results[MODULE] or $results_v0_3) {
      }
      $i = 0; ?>
      <div id="tripal_feature-kegg-box" class="tripal_feature-box tripal-info-box">
-        <div class="tripal_feature-info-box-title tripal-info-box-title">KEGG Terms</div>
-        <div class="tripal_feature-info-box-desc tripal-info-box-desc">
-           <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Pathways</div><?php
-           if($results['PATH']){
-              $header = array('KEGG Pathway','Name');
-              $rows = array();
-              foreach($pathways as $term){ 
-                 $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
-                 $accession = $term->cvterm_id->dbxref_id->accession;
-                 $cvname = $term->cvterm_id->name;
-                 if($urlprefix){
-                    $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
-                 }
-                 $rows[] = array(
-                    $accession,
-                    $cvname
-                 );
-              }
-              print theme('table', $header, $rows); 
-           } 
-           else { 
-              print "<div class=\"tripal-no-results\">There are no KEGG pathways for this feature</div>";
-           } ?>
-           <br><br>
-           <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Orthologs</div><?php
-           if($results['KO']){
-              $header = array('KEGG Ortholog','Name');
-              $rows = array();
-              foreach($orthologs as $term){ 
-                // add in the definition (it's a text column);
-                $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
-                $accession = $term->cvterm_id->dbxref_id->accession;
-                $cvname = $term->cvterm_id->name;
-                if($urlprefix){
-                   $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
-                }
-                $rows[] = array(
-                   $accession,
-                   $cvname
-                );
-              }
-              print theme('table', $header, $rows); 
-           } 
-           else { 
-              print "<div class=\"tripal-no-results\">There are no KEGG orthologs for this feature</div>";
-           } ?>
-           <br><br>
-           <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Modules</div><?php
-           if($results['MODULE']){
-              $header = array('KEGG Module','Name');
-              $rows = array();
-              foreach($modules as $term){ 
-                // add in the definition (it's a text column);
-                $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
-                $accession = $term->cvterm_id->dbxref_id->accession;
-                $cvname = $term->cvterm_id->name;
-                if($urlprefix){
-                   $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
-                }
-                $rows[] = array(
-                   $accession,
-                   $cvname
-                );
-              }
-              print theme('table', $header, $rows); 
-           } 
-           else { 
-              print "<div class=\"tripal-no-results\">There are no KEGG modules for this feature</div>";
-           } ?>
-        </div>
-     </div> <?php 
+       <div class="tripal_feature-info-box-title tripal-info-box-title">KEGG Terms</div>
+       <div class="tripal_feature-info-box-desc tripal-info-box-desc"></div>
+       <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Pathways</div><?php
+       if($results['PATH']){
+          $header = array('KEGG Pathway','Name');
+          $rows = array();
+          foreach($pathways as $term){ 
+             $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
+             $accession = $term->cvterm_id->dbxref_id->accession;
+             $cvname = $term->cvterm_id->name;
+             if($urlprefix){
+                $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
+             }
+             $rows[] = array(
+                $accession,
+                $cvname
+             );
+          }
+          print theme('table', $header, $rows); 
+       } 
+       else { 
+          print "<div class=\"tripal-no-results\">There are no KEGG pathways for this feature</div>";
+       } ?>
+       <br><br>
+       <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Orthologs</div><?php
+       if($results['KO']){
+          $header = array('KEGG Ortholog','Name');
+          $rows = array();
+          foreach($orthologs as $term){ 
+            // add in the definition (it's a text column);
+            $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
+            $accession = $term->cvterm_id->dbxref_id->accession;
+            $cvname = $term->cvterm_id->name;
+            if($urlprefix){
+               $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
+            }
+            $rows[] = array(
+               $accession,
+               $cvname
+            );
+          }
+          print theme('table', $header, $rows); 
+       } 
+       else { 
+          print "<div class=\"tripal-no-results\">There are no KEGG orthologs for this feature</div>";
+       } ?>
+       <br><br>
+       <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Modules</div><?php
+       if($results['MODULE']){
+          $header = array('KEGG Module','Name');
+          $rows = array();
+          foreach($modules as $term){ 
+            // add in the definition (it's a text column);
+            $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
+            $accession = $term->cvterm_id->dbxref_id->accession;
+            $cvname = $term->cvterm_id->name;
+            if($urlprefix){
+               $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
+            }
+            $rows[] = array(
+               $accession,
+               $cvname
+            );
+          }
+          print theme('table', $header, $rows); 
+       } 
+       else { 
+          print "<div class=\"tripal-no-results\">There are no KEGG modules for this feature</div>";
+       } ?>
+    </div> <?php 
   } 
 }
 ?>
