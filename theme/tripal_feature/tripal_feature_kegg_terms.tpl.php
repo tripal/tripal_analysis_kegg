@@ -5,7 +5,7 @@ $results = $feature->tripal_analysis_kegg->results;
 $results_v0_3 = $feature->tripal_analysis_kegg->results_v0_3;
 
 // don't show this block on the page if there are no KEGG results
-if ($results[KO] or $results[PATH] or $results_v0_3) {  
+if ($results[KO] or $results[PATH] or $results[MODULE] or $results_v0_3) {  
 
   // The way KEGG results are stored in the database has changed. Now the results
   // array contains two fields: 'KO' for kegg orthologs and 'PATH' for kegg 
@@ -57,14 +57,17 @@ if ($results[KO] or $results[PATH] or $results_v0_3) {
   else {
      $pathways = $results['PATH'];
      $orthologs = $results['KO'];
+     $modules = $results['MODULE'];
      if (!is_array($pathways)) {
         $pathways = array($pathways);
      }
      if (!is_array($orthologs)) {
         $orthologs = array($orthologs);
      }
-     $i = 0;
-     ?>
+     if (!is_array($modules)) {
+        $modules = array($modules);
+     }
+     $i = 0; ?>
      <div id="tripal_feature-kegg-box" class="tripal_feature-box tripal-info-box">
         <div class="tripal_feature-info-box-title tripal-info-box-title">KEGG Terms</div>
         <div class="tripal_feature-info-box-desc tripal-info-box-desc">
@@ -85,7 +88,8 @@ if ($results[KO] or $results[PATH] or $results_v0_3) {
                  );
               }
               print theme('table', $header, $rows); 
-           } else { 
+           } 
+           else { 
               print "<div class=\"tripal-no-results\">There are no KEGG pathways for this feature</div>";
            } ?>
            <br><br>
@@ -107,8 +111,33 @@ if ($results[KO] or $results[PATH] or $results_v0_3) {
                 );
               }
               print theme('table', $header, $rows); 
-           } else { 
+           } 
+           else { 
               print "<div class=\"tripal-no-results\">There are no KEGG orthologs for this feature</div>";
+           } ?>
+        </div>
+        <br><br>
+        <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Modules</div><?php
+           if($results['MODULE']){
+              $header = array('KEGG Module','Name');
+              $rows = array();
+              foreach($modules as $term){ 
+                // add in the definition (it's a text column);
+                $urlprefix = $term->cvterm_id->dbxref_id->db_id->urlprefix;
+                $accession = $term->cvterm_id->dbxref_id->accession;
+                $cvname = $term->cvterm_id->name;
+                if($urlprefix){
+                   $accession = "<a href=\"$urlprefix$accession\" target=\"_blank\">$accession</a>";
+                }
+                $rows[] = array(
+                   $accession,
+                   $cvname
+                );
+              }
+              print theme('table', $header, $rows); 
+           } 
+           else { 
+              print "<div class=\"tripal-no-results\">There are no KEGG modules for this feature</div>";
            } ?>
         </div>
      </div> <?php 
