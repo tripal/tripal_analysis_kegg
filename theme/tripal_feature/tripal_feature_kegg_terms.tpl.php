@@ -92,7 +92,6 @@ if ($results[KO] or $results[PATH] or $results[MODULE] or $results_v0_3) {
            else { 
               print "<div class=\"tripal-no-results\">There are no KEGG pathways for this feature</div>";
            } ?>
-           </div>
            <br><br>
            <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Orthologs</div><?php
            if($results['KO']){
@@ -116,9 +115,8 @@ if ($results[KO] or $results[PATH] or $results[MODULE] or $results_v0_3) {
            else { 
               print "<div class=\"tripal-no-results\">There are no KEGG orthologs for this feature</div>";
            } ?>
-        </div>
-        <br><br>
-        <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Modules</div><?php
+           <br><br>
+           <div class="tripal_feature-kegg_results_subtitle">Assigned KEGG Modules</div><?php
            if($results['MODULE']){
               $header = array('KEGG Module','Name');
               $rows = array();
