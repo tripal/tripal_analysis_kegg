@@ -36,12 +36,19 @@ function tripal_analysis_kegg_install() {
       'consists of manually defined ortholog groups that correspond to ' .
       'pathways, BRITE hierarchys and modules',
       'http://www.genome.jp/kegg/ko.html',
-      'http://www.genome.jp/dbget-bin/www_bget?ko:');  
+      'http://www.genome.jp/dbget-bin/www_bget?ko:');
+   tripal_db_add_db('KEGG_MODULE', 'KEGG MODULE is a collection of manually '. 
+       'defined functional units, called KEGG modules and identified by the '.
+       'M numbers, used for annotation and biological interpretation of '.
+       'sequenced genomes',
+       'http://www.genome.jp/kegg/module.html',
+       'http://www.genome.jp/kegg-bin/show_module?');
 
    // add in the controlled vocabularies for the KEGG database. 
    tripal_cv_add_cv('KEGG_PATHWAY', 'Holds terms from the KEGG PATHWAY database.');
    tripal_cv_add_cv('KEGG_BRITE', 'Holds terms from the KEGG BRITE database.');
    tripal_cv_add_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
+   tripal_cv_add_cv('KEGG_MODULE', 'Holds terms from the KEGG MODULE database.');
    
    tripal_add_mview(
       // view name
@@ -122,6 +129,25 @@ function tripal_analysis_kegg_update_6102() {
     '#finished' => 1,
   );
    
+  return $ret;
+}
+
+/**
+ * Adds the KEGG Module database and vocabulary
+ */
+function tripal_analysis_kegg_update_6103() {
+  tripal_db_add_db('KEGG_MODULE', 'KEGG MODULE is a collection of manually '.
+      'defined functional units, called KEGG modules and identified by the '.
+      'M numbers, used for annotation and biological interpretation of '.
+      'sequenced genomes',
+      'http://www.genome.jp/kegg/module.html',
+      'http://www.genome.jp/kegg-bin/show_module?');
+
+  tripal_cv_add_cv('KEGG_MODULE', 'Holds terms from the KEGG MODULE database.');
+  $ret = array(
+    '#finished' => 1,
+  );
+
   return $ret;
 }
 /**

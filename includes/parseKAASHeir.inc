@@ -446,6 +446,27 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
         $ko_type_id = $cvterm->cvterm_id;
       }
     }
+    if (preg_match("/^<a.*>(M.*?)<\/a>\s+(.*)$/", $keggterm, $matchparts)) {
+      $ko_id = $matchparts[1];
+      $ko_def = $matchparts[2];
+      $ko_name = $ko_def;
+      $ko_term = array(
+        'id' => $ko_id,
+        'name' => $ko_name,
+        'def' => $ko_def,
+        'namespace' => 'KEGG_MODULE',
+        'is_obsolete' => 0,
+      );
+      $cvterm = tripal_cv_add_cvterm($ko_term, 'KEGG_MODULE', 0, 1, 'KEGG_MODULE');
+      if (!$cvterm) {
+        watchdog('tr_kegg_parse', "Failure to add KEGG KEGG_MODULE term to cvterm table: %ko_id %ko_def. Cannot add term to feature",
+        array('%ko_id' => $ko_id, '%ko_def' => $ko_def), WATCHDOG_ERROR);
+        return;
+      }
+      else {
+        $ko_type_id = $cvterm->cvterm_id;
+      }
+    }
 
     // get the feature name using the user's regular expression
     if ($query_re and preg_match("/$query_re/", $fname, $matches)) {

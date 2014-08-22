@@ -763,13 +763,18 @@ function tripal_analysis_kegg_get_settings() {
   $settings->title = "Tripal Kegg";
   return $settings;
 }
-/************************************************************************
+/**
+ * 
+ * @param unknown $node
  */
 function tripal_analysis_kegg_organism_results($node) {
   $node = node_load($node);
   return tripal_analysis_kegg_organism_add($node);
 }
-/************************************************************************
+/**
+ * 
+ * @param  $feature
+ * @return
  */
 function tripal_analysis_kegg_load_feature_terms($feature) {
 
@@ -787,6 +792,18 @@ function tripal_analysis_kegg_load_feature_terms($feature) {
   );
   $options = array('return_array' => 1);
   $results['KO'] = tripal_core_generate_chado_var('feature_cvterm', $values, $options);
+
+  // Get the KEGG modules for this feature
+  $values = array(
+    'feature_id' => $feature_id,
+    'cvterm_id' => array(
+      'cv_id' => array(
+        'name' => 'KEGG_MODULE'
+      ),
+    ),
+  );
+  $options = array('return_array' => 1);
+  $results['MODULE'] = tripal_core_generate_chado_var('feature_cvterm', $values, $options);
 
   // Get the KEGG pathways for this feature
   $values = array(
