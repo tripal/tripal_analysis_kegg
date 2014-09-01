@@ -22,7 +22,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
       mkdir($data_dir);
       $stderr = shell_exec("cd $data_dir; tar -zxf $hierfile;");
       if ($stderr) {
-        watchdog('tr_kegg_parse',"ERROR: %err", array('%err' => $stderr), 'error');
+        watchdog('trp_kegg',"ERROR: %err", array('%err' => $stderr), 'error');
         exit;
       }
       // now get the uncompressed directory name.  There should only be one
@@ -47,8 +47,8 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     // Remove the analysis features for this analysis
     // we will rebuild them from just this parsing
     $select =  array('analysis_id' => $analysis_id);
-    if (!tripal_core_chado_delete('analysisfeature', $select)) {    
-      watchdog('tr_kegg_parse',"ERROR: Unable to clear previous results", array(), 'error');    
+    if (!chado_delete_record('analysisfeature', $select)) {    
+      watchdog('trp_kegg',"ERROR: Unable to clear previous results", array(), 'error');    
       exit;
     }
      
@@ -64,7 +64,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
           WHERE CV.name='KEGG_BRITE')";
     $success = chado_query($sql, array(':analysis_id' => $analysis_id));
     if (!$success) {
-      watchdog('tr_kegg_parse',"ERROR: Unable to clear previous analysisprop results.", array(), 'error'); 
+      watchdog('trp_kegg',"ERROR: Unable to clear previous analysisprop results.", array(), 'error'); 
       exit;
     }
   
@@ -90,9 +90,9 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
             'name' => $hierarchy,
           );
           $options = array('statement_name' => 'sel_cvterm_cvna');
-          $brite_term = tripal_core_chado_select('cvterm', array('cvterm_id'), $values, $options);
+          $brite_term = chado_select_record('cvterm', array('cvterm_id'), $values, $options);
           if (!$brite_term or count($brite_term) == 0) {
-            watchdog('tr_kegg_parse', "ERROR: Cannot find hierarchy cvterm: '%heirarchy'", 
+            watchdog('trp_kegg', "ERROR: Cannot find hierarchy cvterm: '%heirarchy'", 
               array('%heirarchy' => $hierarchy), 'error');
             exit;
           }
@@ -116,9 +116,9 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
             'value' => $content,
           );
           $options = array('statement_name' => 'ins_analysisprop_antyva');
-          $success = tripal_core_chado_insert('analysisprop', $values, $options);
+          $success = chado_insert_record('analysisprop', $values, $options);
           if (!$success) {
-            watchdog('tr_kegg_parse',"ERROR: Cannot add '%heirarchy' results to the database.",
+            watchdog('trp_kegg',"ERROR: Cannot add '%heirarchy' results to the database.",
               array('%heirarchy' => $hierarchy), 'error');
             exit;
           }
@@ -132,13 +132,13 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
     if (is_file($hierfile)) {
       $stderr = shell_exec("rm -r $data_dir;");
       if($stderr) {
-        watchdog('tr_kegg_parse', "ERROR: %err", array('%err' => $stderr), 'error');
+        watchdog('trp_kegg', "ERROR: %err", array('%err' => $stderr), 'error');
       }
     }
   }
   catch (Exception $e) {
     print "\n"; // make sure we start errors on new line
-    watchdog_exception('tr_kegg_parse', $e);
+    watchdog_exception('trp_kegg', $e);
     $transaction->rollback();
     print "FAILED: Rolling back database changes...\n";
   }
@@ -213,17 +213,19 @@ function tripal_analysis_kegg_parse_kegg_file($file, &$hierarchy, $analysis_id, 
       }
        
       // add the cvterm
-      $brite_term = array(
+      $brite_term = 
+
+      $cvterm = tripal_insert_cvterm(array(
         'id' => "$hierarchy_id",
         'name' => $hierarchy,
         'def' => $hierarchy,
         'namespace' => 'KEGG_BRITE',
         'is_obsolete' => 0,
-      );
-
-      $cvterm = tripal_cv_add_cvterm($brite_term, 'KEGG_BRITE', 0, 1, 'KEGG_BRITE');
+        'cv_name' => 'KEGG_BRITE',
+        'db_name' => 'KEGG_BRITE'
+      ));
       if (!$cvterm) {
-        watchdog('tr_kegg_parse', "Failed.  Cannot add cvterm '%heirarchy'.",
+        watchdog('trp_kegg', "Failed.  Cannot add cvterm '%heirarchy'.",
           array('%heirarchy', $hierarchy), 'error');        
         return;
       }
@@ -347,15 +349,17 @@ function tripal_analysis_kegg_get_next_line($handle, &$filepos, $filesize, &$int
 
         // add the pathway as a cvterm
         $pathway_term = array(
-            'id' => $pathway['id'],
-            'name' => $pathway['name'],
-            'def' => $pathway['def'],
-            'namespace' => 'KEGG_PATHWAY',
-            'is_obsolete' => 0,
+          'id' => $pathway['id'],
+          'name' => $pathway['name'],
+          'def' => $pathway['def'],
+          'namespace' => 'KEGG_PATHWAY',
+          'is_obsolete' => 0,
+          'cv_name' => 'KEGG_PATHWAY',
+          'db_name' => 'KEGG_PATHWAY',
         );
-        $cvterm = tripal_cv_add_cvterm($pathway_term, 'KEGG_PATHWAY', 0, 1, 'KEGG_PATHWAY');
+        $cvterm = tripal_insert_cvterm($pathway_term);
         if (!$cvterm) {
-          watchdog('tr_kegg_parse', "ERROR: Failure to add KEGG PATHWAY term to cvterm table: %table %name.",
+          watchdog('trp_kegg', "ERROR: Failure to add KEGG PATHWAY term to cvterm table: %table %name.",
             array('%table' => $pathway['id'], '%name' => $pathway['name']), 'error');
         } 
         else {
@@ -412,15 +416,18 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       $ko_cvname = 'KEGG_ORTHOLOGY';
       $ko_dbname = 'KEGG_ORTHOLOGY';
       $ko_term = array(
-          'id' => $ko_id,
-          'name' => $ko_name,
-          'def' => $ko_def,
-          'namespace' => $ko_cvname,
-          'is_obsolete' => 0,
+        'id' => $ko_id,
+        'name' => $ko_name,
+        'def' => $ko_def,
+        'namespace' => $ko_cvname,
+        'is_obsolete' => 0,
+        'cv_name' => $ko_cvname,
+        'db_name' => $ko_dbname,
       );
-      $cvterm = tripal_cv_add_cvterm($ko_term, $ko_cvname, 0, 1, $ko_dbname);
+      $cvterm = tripal_insert_cvterm($ko_term);
+
       if (!$cvterm) {
-        watchdog('tr_kegg_parse', "Failure to add KEGG ORTHOLOGY term to cvterm table: %ko_id %ko_def. Cannot add term to feature",
+        watchdog('trp_kegg', "Failure to add KEGG ORTHOLOGY term to cvterm table: %ko_id %ko_def. Cannot add term to feature",
           array('%ko_id' => $ko_id, '%ko_def' => $ko_def), WATCHDOG_ERROR);        
         return;
       } 
@@ -440,10 +447,12 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
         'def' => $ko_def,
         'namespace' => $ko_cvname,
         'is_obsolete' => 0,
+        'cv_name' => $ko_cvname,
+        'db_name' => $ko_dbname,
       );
-      $cvterm = tripal_cv_add_cvterm($ko_term, $ko_cvname, 0, 1, $ko_dbname);
+      $cvterm = tripal_insert_cvterm($ko_term);
       if (!$cvterm) {
-        watchdog('tr_kegg_parse', "Failure to add KEGG MODULE term to cvterm table: %ko_id %ko_def. Cannot add term to feature",
+        watchdog('trp_kegg', "Failure to add KEGG MODULE term to cvterm table: %ko_id %ko_def. Cannot add term to feature",
         array('%ko_id' => $ko_id, '%ko_def' => $ko_def), WATCHDOG_ERROR);
         return;
       }
@@ -487,15 +496,15 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
         'name' => $query_type,
       );
     }
-    $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select);
+    $feature_arr = chado_select_record('feature', array('feature_id'), $select);
 
     if (count($feature_arr) > 1) {
-      watchdog('tr_kegg_parse', "Failed (Ambiguous): '%feature' matches more than one feature and is being skipped.",
+      watchdog('trp_kegg', "Failed (Ambiguous): '%feature' matches more than one feature and is being skipped.",
         array('%feature' => $feature), 'error');
       return;
     }
     if (count($feature_arr) == 0) {
-      watchdog('tr_kegg_parse', "Failed: '%feature' cannot find a matching feature in the databasef.  RE: %query_re; LINE: %fname.", 
+      watchdog('trp_kegg', "Failed: '%feature' cannot find a matching feature in the databasef.  RE: %query_re; LINE: %fname.", 
         array('%feature' => $feature, '%query_re' => $query_re, '%fname' => $fname), 'error');
       return;
     }
@@ -511,15 +520,15 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
         'analysis_id' => $analysis_id
       );
       $options = array('statement_name' => 'sel_analysisfeature_fean');
-      $analysisfeature_arr = tripal_core_chado_select('analysisfeature', $columns, $values, $options);
+      $analysisfeature_arr = chado_select_record('analysisfeature', $columns, $values, $options);
       if (count($analysisfeature_arr) == 0) {
-        if (tripal_core_chado_insert('analysisfeature', $values)) {
+        if (chado_insert_record('analysisfeature', $values)) {
           $options = array('statement_name' => 'ins_analysisfeature_fean');
-          $analysisfeature_arr = tripal_core_chado_select('analysisfeature',
+          $analysisfeature_arr = chado_select_record('analysisfeature',
               array('analysisfeature_id'), $values, $options);
         }
         else {
-          watchdog('tr_kegg_parse', "Failed: Cannot add analysis feature.  Feature Id: %feature_id",
+          watchdog('trp_kegg', "Failed: Cannot add analysis feature.  Feature Id: %feature_id",
             array('%feature_id' => $feature_id), 'error');
           return 0;
         }
@@ -527,28 +536,57 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       $analysisfeature_id = $analysisfeature_arr[0]->analysisfeature_id;
 
       // add this term to the analysis feature properties
-      $success = tripal_feature_analysis_insert_property($analysis_id, $feature_id,
-        NULL, $ko_name, $ko_def, 0, $ko_cvname);
+      $success = chado_insert_property('analysisfeature', $analysisfeature_id,
+        $ko_name, $ko_cvname, $ko_def, 0);
       if (!$success) {
-          watchdog('tr_kegg_parse', "Failed: Could not add orthlog to feature.  Feature Id: %feature_id, Ortholog: '%ortholog'",
+          watchdog('trp_kegg', "Failed: Could not add orthlog to feature.  Feature Id: %feature_id, Ortholog: '%ortholog'",
             array('%feature_id' => $feature_id, '%ortholog' => $ko_id), 'warning');
       }
-      
-      // add the ortholog as a feature_dbxref
-      tripal_feature_add_cvterm($feature_id, $ko_cvname, $ko_name); 
-      
-      
-      // associate this pathway with the feature
-      if (count($pathway) > 0) {        
-        $success = tripal_feature_analysis_insert_property($analysis_id, $feature_id,
-          NULL, $pathway['name'], $pathway['def'], 0, 'KEGG_PATHWAY');
+
+      // Insert term into the feature_cvterm table. if the cvterm already 
+      // exists then just skip adding it
+      $values = array(
+        'feature_id' => $feature_id,
+        'cvterm_id' => $cvterm->cvterm_id,
+        'pub_id' => 1,
+      );
+      $columns = array('*');
+      $fcvterm = chado_select_record('feature_cvterm', $columns, $values);
+      if (count($fcvterm) == 0) {
+        $success = chado_insert_record('feature_cvterm', $values);
         if (!$success) {
-          watchdog('tr_kegg_parse', "Failed: Could not add pathway to feature.  Feature Id: %feature_id, Pathway: '%pathway'",
+          watchdog('tpr_kegg', "Failed: Cannot add cvterm: %name '%value'",
+          array('%name' => $cvterm->name, '%value' =>  $cvterm->def), WATCHDOG_ERROR);
+          continue;
+        }
+      }
+
+      // associate this pathway with the feature
+      if (count($pathway) > 0) {
+        $success = chado_insert_property('analysisfeature', $analysisfeature_id,
+          $pathway['name'], 'KEGG_PATHWAY', $pathway['def'], 0);
+        if (!$success) {
+          watchdog('trp_kegg', "Failed: Could not add pathway to feature.  Feature Id: %feature_id, Pathway: '%pathway'",
             array('%feature_id' => $feature_id, '%pathway' => $pathway['name']), 'warning');
         }
-         
-        // add the pathway as a feature_dbxref
-        tripal_feature_add_cvterm($feature_id, 'KEGG_PATHWAY', $pathway['name']);           
+
+        // Insert pathway into the feature_cvterm table. if the cvterm already
+        // exists then just skip adding it
+        $values = array(
+          'feature_id' => $feature_id,
+          'cvterm_id' => $pathway['type_id'],
+          'pub_id' => 1,
+        );
+        $columns = array('*');
+        $fcvterm = chado_select_record('feature_cvterm', $columns, $values);
+        if (count($fcvterm) == 0) {
+          $success = chado_insert_record('feature_cvterm', $values);
+          if (!$success) {
+            watchdog('tpr_kegg', "Failed: Cannot add cvterm: %name '%value'",
+            array('%name' => $cvterm->name, '%value' =>  $cvterm->def), WATCHDOG_ERROR);
+            continue;
+          }
+        }
       }
 
       // get the node ID of the feature if one exists
@@ -584,7 +622,7 @@ function tripal_analysis_kegg_parse_heir_update_job($filepos, $filesize, &$intv_
     
     // we don't want to update the databe
     if($percentage - $last_percent > 1) {
-      tripal_job_set_progress($job_id, $percentage);
+      tripal_set_job_progress($job_id, $percentage);
     }
     $last_percent = $percentage;
   } 
