@@ -185,12 +185,14 @@ function chado_analysis_kegg_insert($node) {
   $node->hierfile   = trim($node->hierfile);
   $node->query_type = trim($node->query_type);
 
+  $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
+
   // now add in the remaining settings as a single property but separated by bars
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_kegg_settings', 'tripal', trim($node->hierfile));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_kegg_query_re', 'tripal', trim($node->query_re));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_kegg_query_type', 'tripal', trim($node->query_type));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_kegg_query_uniquename', 'tripal', trim($node->query_uniquename));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_kegg_organism_id', 'tripal', $node->organism_id);
+  chado_insert_property($record, array('type_name' => 'analysis_kegg_settings', 'cv_name' => 'tripal', 'value' => trim($node->hierfile)));
+  chado_insert_property($record, array('type_name' => 'analysis_kegg_query_re', 'cv_name' => 'tripal', 'value' => trim($node->query_re)));
+  chado_insert_property($record, array('type_name' => 'analysis_kegg_query_type', 'cv_name' => 'tripal', 'value' => trim($node->query_type)));
+  chado_insert_property($record, array('type_name' => 'analysis_kegg_query_uniquename', 'cv_name' => 'tripal', 'value' => trim($node->query_uniquename)));
+  chado_insert_property($record, array('type_name' => 'analysis_kegg_organism_id', 'cv_name' => 'tripal', 'value' => $node->organism_id));
   
   // Add a job if the user wants to parse the html output
   chado_analysis_kegg_submit_job($node);
@@ -207,14 +209,16 @@ function chado_analysis_kegg_update($node) {
   // trim character fields
   $node->hierfile   = trim($node->hierfile);
   $node->query_type = trim($node->query_type);
+  
+  $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
+  $options = array('insert_if_missing' => TRUE);
 
   // now add in the remaining settings as a single property but separated by bars
-  $analysis_id = $node->analysis_id;
-  chado_update_property('analysis', $analysis_id, 'analysis_kegg_settings', 'tripal', trim($node->hierfile), 1);
-  chado_update_property('analysis', $analysis_id, 'analysis_kegg_query_re', 'tripal', trim($node->query_re), 1);
-  chado_update_property('analysis', $analysis_id, 'analysis_kegg_query_type', 'tripal', trim($node->query_type), 1);
-  chado_update_property('analysis', $analysis_id, 'analysis_kegg_query_uniquename', 'tripal', trim($node->query_uniquename), 1);
-  chado_update_property('analysis', $analysis_id, 'analysis_kegg_organism_id', 'tripal', $node->organism_id, 1);
+  chado_update_property($record, array('type_name' => 'analysis_kegg_settings', 'cv_name' => 'tripal', 'value' => trim($node->hierfile)), $options);
+  chado_update_property($record, array('type_name' => 'analysis_kegg_query_re', 'cv_name' => 'tripal', 'value' => trim($node->query_re)), $options);
+  chado_update_property($record, array('type_name' => 'analysis_kegg_query_type', 'cv_name' => 'tripal', 'value' => trim($node->query_type)), $options);
+  chado_update_property($record, array('type_name' => 'analysis_kegg_query_uniquename', 'cv_name' => 'tripal', 'value' => trim($node->query_uniquename)), $options);
+  chado_update_property($record, array('type_name' => 'analysis_kegg_organism_id', 'cv_name' => 'tripal', 'value' => $node->organism_id), $options);
   
   // Add a job if the user wants to parse the output
   chado_analysis_kegg_submit_job($node);
@@ -264,13 +268,14 @@ function chado_analysis_kegg_load($nodes) {
     // create some variables for easier lookup
     $analysis = $node->analysis;
     $analysis_id = $analysis->analysis_id;
+    $record = array('table'=> 'analysis', 'id' => $analysis->analysis_id);
 
     // get the heirfile name
-    $hierfile         = chado_get_property('analysis', $analysis_id, 'analysis_kegg_settings', 'tripal');
-    $query_re         = chado_get_property('analysis', $analysis_id, 'analysis_kegg_query_re', 'tripal');
-    $query_type       = chado_get_property('analysis', $analysis_id, 'analysis_kegg_query_type', 'tripal');
-    $query_uniquename = chado_get_property('analysis', $analysis_id, 'analysis_kegg_query_uniquename', 'tripal');
-    $organism_id      = chado_get_property('analysis', $analysis_id, 'analysis_kegg_organism_id', 'tripal');
+    $hierfile         = chado_get_property($record, array('type_name' => 'analysis_kegg_settings', 'cv_name' => 'tripal'));
+    $query_re         = chado_get_property($record, array('type_name' => 'analysis_kegg_query_re', 'cv_name' => 'tripal'));
+    $query_type       = chado_get_property($record, array('type_name' => 'analysis_kegg_query_type', 'cv_name' => 'tripal'));
+    $query_uniquename = chado_get_property($record, array('type_name' => 'analysis_kegg_query_uniquename', 'cv_name' => 'tripal'));
+    $organism_id      = chado_get_property($record, array('type_name' => 'analysis_kegg_organism_id', 'cv_name' => 'tripal'));
 
     $analysis->tripal_analysis_kegg = new stdClass();
     $analysis->tripal_analysis_kegg->hierfile = is_object($hierfile)   ? $hierfile->value : '';

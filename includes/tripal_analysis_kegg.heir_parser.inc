@@ -536,8 +536,10 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
       $analysisfeature_id = $analysisfeature_arr[0]->analysisfeature_id;
 
       // add this term to the analysis feature properties
-      $success = chado_insert_property('analysisfeature', $analysisfeature_id,
-        $ko_name, $ko_cvname, $ko_def, 0);
+      $success = chado_insert_property(
+        array('table' => 'analysisfeature', 'id' => $analysisfeature_id),
+        array('type_name' => $ko_name, 'cv_name' => $ko_cvname, 'value' => $ko_def)
+      );
       if (!$success) {
           watchdog('trp_kegg', "Failed: Could not add orthlog to feature.  Feature Id: %feature_id, Ortholog: '%ortholog'",
             array('%feature_id' => $feature_id, '%ortholog' => $ko_id), 'warning');
@@ -563,8 +565,10 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
 
       // associate this pathway with the feature
       if (count($pathway) > 0) {
-        $success = chado_insert_property('analysisfeature', $analysisfeature_id,
-          $pathway['name'], 'KEGG_PATHWAY', $pathway['def'], 0);
+        $success = chado_insert_property(
+          array('table' => 'analysisfeature', 'id' => $analysisfeature_id),
+          array('type_name' => $pathway['name'], 'cv_name' => 'KEGG_PATHWAY', 'value' => $pathway['def'])
+        );
         if (!$success) {
           watchdog('trp_kegg', "Failed: Could not add pathway to feature.  Feature Id: %feature_id, Pathway: '%pathway'",
             array('%feature_id' => $feature_id, '%pathway' => $pathway['name']), 'warning');
