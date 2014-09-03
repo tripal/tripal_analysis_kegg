@@ -1,68 +1,62 @@
 <?php
 
-/*******************************************************************************
- * @file
-*  Implementation of hook_install();
-*/
+/**
+ *  Implementation of hook_install();
+ */
 function tripal_analysis_kegg_install() {
-   // create the module's data directory
-   tripal_create_files_dir('tripal_analysis_kegg');
-   
-   // We need to register to tripal_analysis module so it can provide a control
-   // for our kegg result. Basically the registration is done by inserting
-   // modulename into the drupal {tripal_analysis} table AND inserting required
-   // information to the chado Analysis table. Also in tripal_analysis_interpro.module,
-   // we need to define HOOK_get_settings() for the module to work properly.
-   
-   // Inert into drupal's {tripal_analysis}
-   tripal_register_analysis_child('tripal_analysis_kegg');
-   
-   // add the cvterms needed for this module
-   tripal_analysis_kegg_add_cvterms();
-
-   // make sure the KEGG databases we will be using exist.  The list of 
-   // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
-   // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY
-   tripal_insert_db(array(
-     'name' => 'KEGG_PATHWAY', 
-     'description' => 'KEGG PATHWAY is a collection of manually ' .
-         'drawn pathway maps representing our knowledge on the molecular interaction ' .
-         'and reaction networks.',
-     'url' => 'http://www.genome.jp/kegg/pathway.html',
-     'urlprefix' =>  'http://www.genome.jp/dbget-bin/www_bget?ko+'
-   ));
-   tripal_insert_db(array(
-     'name' => 'KEGG_BRITE', 
-     'description' => 'KEGG BRITE is a collection of hierarchical ' .
-         'classifications from KEGG.',
-     'url' => 'http://www.genome.jp/kegg/brite.html',
-     'urlprefix' =>   'http://www.genome.jp/kegg-bin/get_htext?'
-   ));
-   tripal_insert_db(array(
-     'name' => 'KEGG_ORTHOLOGY', 
-     'description' => 'The KEGG Orthology (KO) system ' .
-         'consists of manually defined ortholog groups that correspond to ' .
-        'pathways, BRITE hierarchys and modules',
-     'url' => 'http://www.genome.jp/kegg/ko.html',
-     'urlprefix' =>  'http://www.genome.jp/dbget-bin/www_bget?ko:'
-   ));
-   tripal_insert_db(array(
-     'name' => 'KEGG_MODULE',
-     'description' => 'KEGG MODULE is a collection of manually '.
-         'defined functional units, called KEGG modules and identified by the '.
-         'M numbers, used for annotation and biological interpretation of '.
-         'sequenced genomes',
-     'url' => 'http://www.genome.jp/kegg/module.html',
-     'urlprefix' => 'http://www.genome.jp/kegg-bin/show_module?',
-   ));
-
-   // add in the controlled vocabularies for the KEGG database. 
-   tripal_insert_cv('KEGG_PATHWAY','Holds terms from the KEGG PATHWAY database.');
-   tripal_insert_cv('KEGG_BRITE', 'Holds terms from the KEGG BRITE database.');
-   tripal_insert_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
-   tripal_insert_cv('KEGG_MODULE',  'Holds terms from the KEGG MODULE database.');
-
-   tripal_analysis_kegg_add_mview_kegg_by_organism();
+  // Create the module's data directory.
+  tripal_create_files_dir('tripal_analysis_kegg');
+  
+  // Register this analysis module.
+  tripal_register_analysis_child('tripal_analysis_kegg');
+  
+  // Add the cvterms needed for this module.
+  tripal_analysis_kegg_add_cvterms();
+  
+  // Make sure the KEGG databases we will be using exist.  The list of 
+  // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
+  // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY.
+  tripal_insert_db(array(
+   'name' => 'KEGG_PATHWAY', 
+   'description' => 'KEGG PATHWAY is a collection of manually ' .
+       'drawn pathway maps representing our knowledge on the molecular interaction ' .
+       'and reaction networks.',
+   'url' => 'http://www.genome.jp/kegg/pathway.html',
+   'urlprefix' =>  'http://www.genome.jp/dbget-bin/www_bget?ko+'
+  ));
+  tripal_insert_db(array(
+   'name' => 'KEGG_BRITE', 
+   'description' => 'KEGG BRITE is a collection of hierarchical ' .
+       'classifications from KEGG.',
+   'url' => 'http://www.genome.jp/kegg/brite.html',
+   'urlprefix' =>   'http://www.genome.jp/kegg-bin/get_htext?'
+  ));
+  tripal_insert_db(array(
+   'name' => 'KEGG_ORTHOLOGY', 
+   'description' => 'The KEGG Orthology (KO) system ' .
+       'consists of manually defined ortholog groups that correspond to ' .
+      'pathways, BRITE hierarchys and modules',
+   'url' => 'http://www.genome.jp/kegg/ko.html',
+   'urlprefix' =>  'http://www.genome.jp/dbget-bin/www_bget?ko:'
+  ));
+  tripal_insert_db(array(
+   'name' => 'KEGG_MODULE',
+   'description' => 'KEGG MODULE is a collection of manually '.
+       'defined functional units, called KEGG modules and identified by the '.
+       'M numbers, used for annotation and biological interpretation of '.
+       'sequenced genomes',
+   'url' => 'http://www.genome.jp/kegg/module.html',
+   'urlprefix' => 'http://www.genome.jp/kegg-bin/show_module?',
+  ));
+  
+  // Add in the controlled vocabularies for the KEGG database.
+  tripal_insert_cv('KEGG_PATHWAY','Holds terms from the KEGG PATHWAY database.');
+  tripal_insert_cv('KEGG_BRITE', 'Holds terms from the KEGG BRITE database.');
+  tripal_insert_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
+  tripal_insert_cv('KEGG_MODULE',  'Holds terms from the KEGG MODULE database.');
+  
+  // Add the materialized view
+  tripal_analysis_kegg_add_mview_kegg_by_organism();
 }
 
 
@@ -197,7 +191,7 @@ function tripal_analysis_kegg_uninstall() {
 function tripal_analysis_kegg_requirements($phase) {
    $requirements = array();
    if ($phase == 'install') {
-      if (!function_exists('tripal_create_moddir') || !function_exists('tripal_analysis_register_child')) {
+      if (!function_exists('tripal_create_moddir') || !function_exists('tripal_register_analysis_child')) {
          $requirements ['tripal_analysis_kegg'] = array(
             'title' => "tripal_analysis_kegg",
             'value' => "Installation Error. Some required modules are not installed. Please install missing modules and try again.",

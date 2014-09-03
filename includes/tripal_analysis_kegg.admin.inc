@@ -23,5 +23,17 @@ function tripal_analysis_kegg_settings_form($form, &$form_state) {
   );
   chado_add_admin_form_set_title($form, $form_state, $details);
   
+  // Add form elements for customizing the node URLs.
+  $details = array(
+    'module' => 'tripal_analysis_kegg',
+    'content_type' => 'chado_analysis_kegg',
+    // An array of options to use under "Page URL"
+    // the key should be the token and the value should be the human-readable option
+    'options' => array(
+      '/analysis/[analysis.analysis_id]' => 'Analysis ID',
+      '/analysis/[analysis.program]/[analysis.programversion]/[analysis.sourcename]' => 'Unique Contraint: Includes the program name & version as well as the source name'
+    )
+  );
+  chado_add_admin_form_set_url($form, $form_state, $details);
   return $form;
 }
