@@ -25,12 +25,3 @@ function tripal_analysis_kegg_settings_form($form, &$form_state) {
   
   return $form;
 }
-
-/**
- * 
- * @param $form
- * @param $form_state
- */
-function tripal_analysis_kegg_settings_form_submit($form,  &$form_state) {
-
-}
