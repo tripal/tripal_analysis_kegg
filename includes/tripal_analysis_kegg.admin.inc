@@ -37,3 +37,11 @@ function tripal_analysis_kegg_settings_form($form, &$form_state) {
   chado_add_admin_form_set_url($form, $form_state, $details);
   return $form;
 }
+
+
+/**
+ * Implements hook_chado_node_default_url_format()
+ */
+function chado_analysis_kegg_chado_node_default_url_format() {
+  return '/analysis/[analysis.analysis_id]';
+}
