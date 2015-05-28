@@ -26,12 +26,30 @@ function tripal_analysis_kegg_menu() {
   $items['admin/tripal/extension/tripal_kegg_analysis'] = array(
     'title' => 'Tripal KEGG Analyses',
     'description' => 'Settings for the displays of KEGG/KAAS analysis results.',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('tripal_analysis_kegg_settings_form'),
+    'page callback' => 'tripal_analysis_kegg_admin_view',
     'access arguments' => array('administer site configuration'),
     'type' => MENU_NORMAL_ITEM,
   );
-  
+
+  $items['admin/tripal/extension/tripal_kegg_analysis/configuration'] = array(
+    'title' => 'Settings',
+    'description' => 'Settings for the displays of KEGG analysis results.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('tripal_analysis_kegg_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1
+  );
+  $items['admin/tripal/extension/tripal_kegg_analysis/sync'] = array(
+    'title' => ' Sync',
+    'description' => 'Create pages on this site for KEGG analyses',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('chado_node_sync_form', 'tripal_analysis_kegg', 'chado_analysis_kegg'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2
+  );
+
   // ajax and non-javascript callbacks for retrieving KEGG report data
   $items['tripal_analysis_kegg/report/nojs/%/%'] = array(
     'page callback' => 'tripal_analysis_kegg_brite_ajax_update',
@@ -93,7 +111,7 @@ function tripal_analysis_kegg_block($op = 'list', $delta = 0, $edit=array()) {
       $blocks['kegg_base']['info'] = t('Analsyis: KEGG Details');
       $blocks['kegg_base']['cache'] = BLOCK_NO_CACHE;
 
-       
+
       return $blocks;
 
 
@@ -156,7 +174,7 @@ function tripal_analysis_kegg_theme($existing, $type, $theme, $path) {
       'template' => 'tripal_analysis_kegg_report',
       'path' => "$path/theme/templates",
     ),
-    
+
     // tripal_organism theme
     'tripal_organism_kegg_summary' => array(
       'variables' => array('node' => NULL),
@@ -164,12 +182,12 @@ function tripal_analysis_kegg_theme($existing, $type, $theme, $path) {
       'path' => "$path/theme/templates",
     ),
   );
-  
+
   return $items;
 }
 
 /**
- * 
+ *
  * @param unknown $node
  */
 function tripal_analysis_kegg_organism_results($node) {

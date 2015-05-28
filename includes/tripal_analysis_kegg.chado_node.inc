@@ -1,9 +1,8 @@
-<?php 
+<?php
 
-/*******************************************************************************
- *  Provide information to drupal about the node types that we're creating
-*  in this module
-*/
+/**
+ * Implements hook_node_info();
+ */
 function tripal_analysis_kegg_node_info() {
   $nodes = array();
   $nodes['chado_analysis_kegg'] = array(
@@ -18,17 +17,33 @@ function tripal_analysis_kegg_node_info() {
     'chado_node_api' => array(
       'base_table' => 'analysis',
       'hook_prefix' => 'chado_analysis_kegg',
+      'linking_table' => 'chado_analysis',
       'record_type_title' => array(
         'singular' => t('InterPro Analysis'),
         'plural' => t('InterPro Analyses')
       ),
-      // this module will not sync.  that will be handled by the
-      // analysis module
+      'sync_filters' => array(
+        'type_id' => FALSE,
+        'organism_id' => FALSE,
+        'checkboxes' => array('name'),
+      ),
     )
   );
   return $nodes;
 }
+/**
+ * Implements hook_chado_node_sync_select_query().
+ */
+function chado_analysis_kegg_chado_node_sync_select_query($query) {
+  $query['joins'][] = 'INNER JOIN {analysisprop} PROP ON PROP.analysis_id = ANALYSIS.analysis_id';
+  $query['joins'][] = 'INNER JOIN {cvterm} CVTP ON CVTP.cvterm_id = PROP.type_id';
+  $query['where_clauses']['analysis_type'][] = 'CVTP.name = :type_name';
+  $query['where_clauses']['property_value'][] = 'PROP.value = :prop_value';
+  $query['where_args']['analysis_type'][':type_name'] = 'Analysis Type';
+  $query['where_args']['property_value'][':prop_value'] = 'kegg_analysis';
 
+  return $query;
+}
 /*******************************************************************************
  *  The following function proves access control for users trying to
  *  perform actions on data managed by this module
@@ -64,14 +79,14 @@ function chado_analysis_kegg_form($node, $form_state) {
 
   // add in the default fields
   $form = chado_analysis_form($node, $form_state);
-  
+
   // set the defaults
   $hierfile = '';
   $query_re = '';
   $query_type = '';
   $query_uniquename = '';
   $organism_id = '';
-  
+
   if (property_exists($node, 'analysis')) {
     $kegg = $node->analysis->tripal_analysis_kegg;
     $query_re = $kegg->query_re;
@@ -117,7 +132,7 @@ function chado_analysis_kegg_form($node, $form_state) {
           'or more sequences have the same name.'),
       '#default_value' => $query_type,
   );
-  
+
   $sql = "
     SELECT organism_id, genus, species
     FROM {organism}
@@ -163,11 +178,11 @@ function chado_analysis_kegg_form($node, $form_state) {
 function chado_analysis_kegg_validate($node, &$form, &$form_state) {
   // use the analysis parent to validate the node
   tripal_analysis_validate($node, $form, $form_state);
-  
+
   // trim character fields
   $node->hierfile   = trim($node->hierfile);
   $node->query_type = trim($node->query_type);
-  
+
   if($node->hierfile and !is_readable($node->hierfile)) {
     form_set_error('hierfile', "Can not read KAAS hier.tar.gz output file: '$node->hierfile'. Please check file permissions or typos in the file path.");
   }
@@ -176,16 +191,19 @@ function chado_analysis_kegg_validate($node, &$form, &$form_state) {
  *
  */
 function chado_analysis_kegg_insert($node) {
-  
+
   // insert the analysis. If the analysis already exist then this
   // call will link it to a new Drupa node.
   chado_analysis_insert($node);
-  
+
   // trim character fields
   $node->hierfile   = trim($node->hierfile);
   $node->query_type = trim($node->query_type);
 
   $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
+
+  // Add the analysis type.
+  chado_insert_property($record, array('type_name' =>'Analysis Type', 'cv_name' => 'analysis_property', 'value' => 'kegg_analysis'));
 
   // now add in the remaining settings as a single property but separated by bars
   chado_insert_property($record, array('type_name' => 'analysis_kegg_settings', 'cv_name' => 'tripal', 'value' => trim($node->hierfile)));
@@ -193,7 +211,7 @@ function chado_analysis_kegg_insert($node) {
   chado_insert_property($record, array('type_name' => 'analysis_kegg_query_type', 'cv_name' => 'tripal', 'value' => trim($node->query_type)));
   chado_insert_property($record, array('type_name' => 'analysis_kegg_query_uniquename', 'cv_name' => 'tripal', 'value' => trim($node->query_uniquename)));
   chado_insert_property($record, array('type_name' => 'analysis_kegg_organism_id', 'cv_name' => 'tripal', 'value' => $node->organism_id));
-  
+
   // Add a job if the user wants to parse the html output
   chado_analysis_kegg_submit_job($node);
 }
@@ -202,16 +220,19 @@ function chado_analysis_kegg_insert($node) {
  * Update KEGG analysis
  */
 function chado_analysis_kegg_update($node) {
-  
+
   // insert the analysis
   chado_analysis_update($node);
 
   // trim character fields
   $node->hierfile   = trim($node->hierfile);
   $node->query_type = trim($node->query_type);
-  
+
   $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
   $options = array('insert_if_missing' => TRUE);
+
+  // Update the analysis type.
+  chado_update_property($record, array('type_name' =>'Analysis Type', 'cv_name' => 'analysis_property', 'value' => 'kegg_analysis'), $options);
 
   // now add in the remaining settings as a single property but separated by bars
   chado_update_property($record, array('type_name' => 'analysis_kegg_settings', 'cv_name' => 'tripal', 'value' => trim($node->hierfile)), $options);
@@ -219,7 +240,7 @@ function chado_analysis_kegg_update($node) {
   chado_update_property($record, array('type_name' => 'analysis_kegg_query_type', 'cv_name' => 'tripal', 'value' => trim($node->query_type)), $options);
   chado_update_property($record, array('type_name' => 'analysis_kegg_query_uniquename', 'cv_name' => 'tripal', 'value' => trim($node->query_uniquename)), $options);
   chado_update_property($record, array('type_name' => 'analysis_kegg_organism_id', 'cv_name' => 'tripal', 'value' => $node->organism_id), $options);
-  
+
   // Add a job if the user wants to parse the output
   chado_analysis_kegg_submit_job($node);
 }
@@ -260,10 +281,10 @@ function chado_analysis_kegg_submit_job($node) {
  *  to add auxiliary data to the node object.
  */
 function chado_analysis_kegg_load($nodes) {
-    
+
   // load the default set of analysis fields
   chado_analysis_load ($nodes);
-  
+
   foreach ($nodes as $nid => $node) {
     // create some variables for easier lookup
     $analysis = $node->analysis;
@@ -346,7 +367,7 @@ function tripal_analysis_kegg_node_view($node, $view_mode, $langcode) {
         $node->content ['tripal_organism_kegg_summary'] = array (
           '#markup' => theme('tripal_organism_kegg_summary', array('node' => $node)),
           '#tripal_toc_id'    => 'kegg_summary',
-          '#tripal_toc_title' => 'KEGG Report' 
+          '#tripal_toc_title' => 'KEGG Report'
         );
       }
       break;
@@ -382,7 +403,7 @@ function tripal_analysis_kegg_node_insert($node) {
 
       // Now get the title
       $node->title = chado_get_node_title($node);
-      
+
       // Now use the API to set the path.
       chado_set_node_url($node);
 
