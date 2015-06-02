@@ -4,20 +4,18 @@
  *  Implementation of hook_install();
  */
 function tripal_analysis_kegg_install() {
-  // Create the module's data directory.
-  tripal_create_files_dir('tripal_analysis_kegg');
-  
+
   // Register this analysis module.
   tripal_register_analysis_child('tripal_analysis_kegg');
-  
+
   // Add the cvterms needed for this module.
   tripal_analysis_kegg_add_cvterms();
-  
-  // Make sure the KEGG databases we will be using exist.  The list of 
+
+  // Make sure the KEGG databases we will be using exist.  The list of
   // KEGG databases can be found here: http://www.genome.jp/kegg/kegg3.html
   // we only use three: KEGG PATHWAY, KEGG BRITE AND KEGG ORTHOLOGY.
   tripal_insert_db(array(
-   'name' => 'KEGG_PATHWAY', 
+   'name' => 'KEGG_PATHWAY',
    'description' => 'KEGG PATHWAY is a collection of manually ' .
        'drawn pathway maps representing our knowledge on the molecular interaction ' .
        'and reaction networks.',
@@ -25,14 +23,14 @@ function tripal_analysis_kegg_install() {
    'urlprefix' =>  'http://www.genome.jp/dbget-bin/www_bget?ko+'
   ));
   tripal_insert_db(array(
-   'name' => 'KEGG_BRITE', 
+   'name' => 'KEGG_BRITE',
    'description' => 'KEGG BRITE is a collection of hierarchical ' .
        'classifications from KEGG.',
    'url' => 'http://www.genome.jp/kegg/brite.html',
    'urlprefix' =>   'http://www.genome.jp/kegg-bin/get_htext?'
   ));
   tripal_insert_db(array(
-   'name' => 'KEGG_ORTHOLOGY', 
+   'name' => 'KEGG_ORTHOLOGY',
    'description' => 'The KEGG Orthology (KO) system ' .
        'consists of manually defined ortholog groups that correspond to ' .
       'pathways, BRITE hierarchys and modules',
@@ -48,13 +46,13 @@ function tripal_analysis_kegg_install() {
    'url' => 'http://www.genome.jp/kegg/module.html',
    'urlprefix' => 'http://www.genome.jp/kegg-bin/show_module?',
   ));
-  
+
   // Add in the controlled vocabularies for the KEGG database.
   tripal_insert_cv('KEGG_PATHWAY','Holds terms from the KEGG PATHWAY database.');
   tripal_insert_cv('KEGG_BRITE', 'Holds terms from the KEGG BRITE database.');
   tripal_insert_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
   tripal_insert_cv('KEGG_MODULE',  'Holds terms from the KEGG MODULE database.');
-  
+
   // Add the materialized view
   tripal_analysis_kegg_add_mview_kegg_by_organism();
 }
@@ -129,55 +127,55 @@ function tripal_analysis_kegg_add_mview_kegg_by_organism() {
 */
 function tripal_analysis_kegg_add_cvterms() {
   tripal_insert_cvterm(array(
-    'name' => 'analysis_kegg_settings', 
+    'name' => 'analysis_kegg_settings',
     'def' => 'Settings of a KEGG analysis, Currently include only the heir.tar.gz file name & path.',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'kegg_brite_data', 
+    'name' => 'kegg_brite_data',
     'def' => 'This term is intended for use in the analysisfeatureprop table to store the KAAS results data.',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'analysis_kegg_query_re', 
+    'name' => 'analysis_kegg_query_re',
     'def' => 'The regular expression for finding the feature name in the query definition line of the blast results',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'analysis_kegg_query_type', 
+    'name' => 'analysis_kegg_query_type',
     'def' => 'The feature type (e.g. mRNA, polypeptide) of the query input file. This type is used to identify the query feature when multiple features have the same name',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'analysis_kegg_query_uniquename', 
+    'name' => 'analysis_kegg_query_uniquename',
     'def' => 'Indicates if the matched name in the query definition line of the blast results is feature uniquename',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'analysis_kegg_output_keywords', 
+    'name' => 'analysis_kegg_output_keywords',
     'def' => 'Selected keywords for kegg html output which are indexed for search.',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'analysis_kegg_organism_id', 
+    'name' => 'analysis_kegg_organism_id',
     'def' => 'The organism ID of the organism to which KEGG analysis results belong.',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
-    
+
 }
 /*******************************************************************************
 * Implementation of hook_uninstall()
 */
 function tripal_analysis_kegg_uninstall() {
   tripal_unregister_analysis_child('tripal_analysis_kegg');
-  
+
   $mview_id = tripal_get_mview_id('kegg_by_organism');
   if ($mview_id) {
     tripal_delete_mview($mview_id);
@@ -247,7 +245,7 @@ function tripal_analysis_kegg_update_7200() {
 function tripal_analysis_kegg_update_7201() {
   try {
     tripal_insert_cvterm(array(
-      'name' => 'analysis_kegg_organism_id', 
+      'name' => 'analysis_kegg_organism_id',
       'definition' => 'The organism ID of the organism to which KEGG analysis results belong.',
       'cv_name' => 'tripal',
       'db_name' => 'tripal'
