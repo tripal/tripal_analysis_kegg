@@ -187,17 +187,18 @@ function tripal_analysis_kegg_uninstall() {
  * Analysis' are enabled before installation
  */
 function tripal_analysis_kegg_requirements($phase) {
-   $requirements = array();
-   if ($phase == 'install') {
-      if (!function_exists('tripal_create_moddir') || !function_exists('tripal_register_analysis_child')) {
-         $requirements ['tripal_analysis_kegg'] = array(
-            'title' => "tripal_analysis_kegg",
-            'value' => "Installation Error. Some required modules are not installed. Please install missing modules and try again.",
-            'severity' => REQUIREMENT_ERROR,
-         );
-      }
-   }
-   return $requirements;
+  $requirements = array();
+  if ($phase == 'install') {
+    // make sure chado is installed
+    if (!$GLOBALS["chado_is_installed"]) {
+      $requirements ['tripal_feature'] = array(
+          'title' => "t ripal_feature",
+          'value' => "ERROR: Chado must be installed before this module can be enabled",
+          'severity' => REQUIREMENT_ERROR,
+      );
+    }
+  }
+  return $requirements;
 }
 
 /**
