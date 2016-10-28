@@ -20,7 +20,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
       // generate a unique directory name for extracting and parsing the file
       $data_dir = sys_get_temp_dir() . "/" . uniqid();
       mkdir($data_dir);
-      $stderr = shell_exec("cd $data_dir; tar -zxf $hierfile;");
+      $stderr = shell_exec('cd  ' . escapeshellarg($data_dir) . '; tar -zxf ' . escapeshellarg($hierfile));
       if ($stderr) {
         watchdog('trp_kegg',"ERROR: %err", array('%err' => $stderr), 'error');
         exit;
@@ -130,7 +130,7 @@ function tripal_analysis_kegg_parseHierFile($analysis_id, $hierfile, $base_path,
   
     // If user input a file, remove decompressed files after parsing
     if (is_file($hierfile)) {
-      $stderr = shell_exec("rm -r $data_dir;");
+      $stderr = shell_exec('rm -r ' . escapeshellarg($data_dir));
       if($stderr) {
         watchdog('trp_kegg', "ERROR: %err", array('%err' => $stderr), 'error');
       }
