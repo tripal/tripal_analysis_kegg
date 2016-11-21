@@ -559,7 +559,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
         if (!$success) {
           watchdog('tpr_kegg', "Failed: Cannot add cvterm: %name '%value'",
           array('%name' => $cvterm->name, '%value' =>  $cvterm->def), WATCHDOG_ERROR);
-          continue;
+          return;
         }
       }
 
@@ -588,7 +588,7 @@ function tripal_analysis_kegg_check_line_handle_feature($query_re,
           if (!$success) {
             watchdog('tpr_kegg', "Failed: Cannot add cvterm: %name '%value'",
             array('%name' => $cvterm->name, '%value' =>  $cvterm->def), WATCHDOG_ERROR);
-            continue;
+            return;
           }
         }
       }
