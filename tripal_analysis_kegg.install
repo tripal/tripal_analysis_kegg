@@ -168,6 +168,13 @@ function tripal_analysis_kegg_add_cvterms() {
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
+  $term = tripal_insert_cvterm(array(
+    'id' => 'data:1154',
+    'name' => 'KEGG object identifier',
+    'cv_name' => 'EDAM',
+    'definition' => 'Unique identifier of an object from one of the KEGG databases (excluding the GENES division).',
+  ));
+  tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
 
 }
 /*******************************************************************************
@@ -277,5 +284,24 @@ function tripal_analysis_kegg_update_7202() {
   catch (\PDOException $e) {
     $error = $e->getMessage();
     throw new DrupalUpdateException('Failed to complete update: ' . $error);
+  }
+}
+
+/**
+ * Adds the Tripal v3 vocabulary term for blast results.
+ */
+function tripal_analysis_kegg_update_7300() {
+  try {
+    $term = tripal_insert_cvterm(array(
+      'id' => 'data:1154',
+      'name' => 'KEGG object identifier',
+      'cv_name' => 'EDAM',
+      'definition' => 'Unique identifier of an object from one of the KEGG databases (excluding the GENES division).',
+    ));
+    tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Failed to update terms: '. $error);
   }
 }
