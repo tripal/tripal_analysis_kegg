@@ -49,6 +49,9 @@ function tripal_analysis_kegg_load_organism_kegg_summary($node) {
   $has_results = 0;
   while ($analysis = $results->fetchObject()) {
     $nid = chado_get_nid_from_id('analysis', $analysis->analysis_id);
+    if (!$nid) {
+      continue;
+    }
     $anode = node_load($nid);
     if (node_access("view", $anode)) {
       $has_results = 1;
@@ -87,6 +90,9 @@ function tripal_analysis_kegg_select_form($form, $form_state, $node) {
   while ($analysis = $results->fetchObject()) {
     # check to see if the user has permission to see this analysis
     $nid = chado_get_nid_from_id('analysis', $analysis->analysis_id);
+    if (!$nid) {
+      continue;
+    }
     $anode = node_load($nid);
     if (node_access("view", $anode)) {
       $analyses[$analysis->analysis_id] = "$analysis->analysis_name";
