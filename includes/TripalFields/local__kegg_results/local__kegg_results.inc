@@ -37,7 +37,7 @@ class local__kegg_results extends ChadoField {
   /**
    * @see TripalField::load()
    */
-  public function load($entity, $details = array()) {return;
+  public function load($entity, $details = array()) {
     $record = $entity->chado_record;
 
     $settings = $this->instance['settings'];
@@ -47,7 +47,7 @@ class local__kegg_results extends ChadoField {
     $field_column = $this->instance['settings']['chado_column'];
 
     // Get the terms for each of the keys for the 'values' property.
-    $label_term = 'data:1154';
+    $label_term = 'local:kegg_results';
     // Set some defaults for the empty record.
     $entity->{$field_name}['und'][0] = array(
       'value' => ''
