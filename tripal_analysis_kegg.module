@@ -2,7 +2,7 @@
 require_once "api/tripal_analysis_kegg.api.inc";
 
 require_once "includes/tripal_analysis_kegg.chado_node.inc";
-require_once "includes/tripal_analysis_kegg.admin.inc";
+require_once "includes/tripal_analysis_kegg.fields.inc";
 
 require_once "theme/tripal_analysis_kegg.theme.inc";
 

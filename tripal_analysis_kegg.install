@@ -168,14 +168,6 @@ function tripal_analysis_kegg_add_cvterms() {
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
-  $term = tripal_insert_cvterm(array(
-    'id' => 'data:1154',
-    'name' => 'KEGG object identifier',
-    'cv_name' => 'EDAM',
-    'definition' => 'Unique identifier of an object from one of the KEGG databases (excluding the GENES division).',
-  ));
-  tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
-
 }
 /*******************************************************************************
 * Implementation of hook_uninstall()
@@ -206,6 +198,38 @@ function tripal_analysis_kegg_requirements($phase) {
     }
   }
   return $requirements;
+}
+
+/**
+ * Create Analysis Interpro Entity Type
+ */
+function tripal_analysis_kegg_create_entity_type () {
+  $term = tripal_insert_cvterm(array(
+    'id' => 'local:kegg_results',
+    'name' => 'KEGG results',
+    'cv_name' => 'local',
+    'definition' => 'Results for KEGG analysis.',
+  ));
+  
+  $error = '';
+  $args = array(
+    'vocabulary' => 'local',
+    'accession' => 'kegg_results',
+    'term_name' => 'KEGG results',
+    'storage_args' => array(
+      'data_table' => 'analysis',
+      'type_linker_table' => 'analysisprop',
+      'type_column' => 'type_id',
+      'type_value' => 'kegg_analysis'
+    )
+  );
+  $term = tripal_load_term_entity(array('vocabulary' => 'local', 'accession' => 'kegg_results'));
+  $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
+  if (!$term or !$bundle) {
+    if (!tripal_create_bundle($args, $error)) {
+      throw new Exception($error['!message']);
+    }
+  }
 }
 
 /**
@@ -288,20 +312,14 @@ function tripal_analysis_kegg_update_7202() {
 }
 
 /**
- * Adds the Tripal v3 vocabulary term for blast results.
+ * Create KEGG results entity type
  */
-function tripal_analysis_kegg_update_7300() {
+function tripal_analysis_kegg_update_7301() {
   try {
-    $term = tripal_insert_cvterm(array(
-      'id' => 'data:1154',
-      'name' => 'KEGG object identifier',
-      'cv_name' => 'EDAM',
-      'definition' => 'Unique identifier of an object from one of the KEGG databases (excluding the GENES division).',
-    ));
-    tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
+    tripal_analysis_kegg_create_entity_type();
   }
   catch (\PDOException $e) {
     $error = $e->getMessage();
-    throw new DrupalUpdateException('Failed to update terms: '. $error);
+    throw new DrupalUpdateException('Failed to create entity type [KEGG results]: '. $error);
   }
 }

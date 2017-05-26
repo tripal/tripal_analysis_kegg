@@ -1,12 +1,12 @@
 <?php
 
-class data__kegg_object_identifier_formatter extends ChadoFieldFormatter {
+class local__kegg_results_formatter extends ChadoFieldFormatter {
 
   // The default lable for this field.
-  public static $default_label = 'KEGG object identifier';
+  public static $default_label = 'KEGG results';
 
   // The list of field types for which this formatter is appropriate.
-  public static $field_types = array('data__kegg_object_identifier');
+  public static $field_types = array('local__kegg_results');
 
   /**
    * @see TripalFieldFormatter::view()

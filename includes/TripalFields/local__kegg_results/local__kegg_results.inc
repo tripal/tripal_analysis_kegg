@@ -1,12 +1,12 @@
 <?php
 
-class data__kegg_object_identifier extends ChadoField {
+class local__kegg_results extends ChadoField {
 
   // The default lable for this field.
-  public static $default_label = 'KEGG object identifier';
+  public static $default_label = 'KEGG results';
 
   // The default description for this field.
-  public static $description = 'Unique identifier of an object from one of the KEGG databases (excluding the GENES division).';
+  public static $description = 'Results for KEGG analysis.';
 
   // Provide a list of instance specific settings. These can be access within
   // the instanceSettingsForm.  When the instanceSettingsForm is submitted
@@ -17,11 +17,11 @@ class data__kegg_object_identifier extends ChadoField {
   // required for all TripalFields.
   public static $default_instance_settings  = array(
     // The short name for the vocabulary (e.g. shcema, SO, GO, PATO, etc.).
-    'term_vocabulary' => 'data',
+    'term_vocabulary' => 'local',
     // The name of the term.
-    'term_name' => 'KEGG object identifier',
+    'term_name' => 'KEGG results',
     // The unique ID (i.e. accession) of the term.
-    'term_accession' => '1154',
+    'term_accession' => 'kegg_results',
     // Set to TRUE if the site admin is allowed to change the term
     // type. This will create form elements when editing the field instance
     // to allow the site admin to change the term settings above.
@@ -29,15 +29,15 @@ class data__kegg_object_identifier extends ChadoField {
   );
 
   // The default widget for this field.
-  public static $default_widget = 'data__kegg_object_identifier_widget';
+  public static $default_widget = 'local__kegg_results_widget';
 
   // The default formatter for this field.
-  public static $default_formatter = 'data__kegg_object_identifier_formatter';
+  public static $default_formatter = 'local__kegg_results_formatter';
 
   /**
    * @see TripalField::load()
    */
-  public function load($entity, $details = array()) {
+  public function load($entity, $details = array()) {return;
     $record = $entity->chado_record;
 
     $settings = $this->instance['settings'];
