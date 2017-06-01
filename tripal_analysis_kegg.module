@@ -210,3 +210,27 @@ function tripal_analysis_kegg_form_alter(&$form, &$form_state, $form_id) {
     $form['actions']['preview']['#access'] = FALSE;
   }
 }
+
+/**
+ * Add KEGG report to the 'KEGG results entity type
+ * 
+ * @param unknown $build
+ */
+function tripal_analysis_kegg_node_view_alter(&$build) {
+  $bundle = tripal_load_bundle_entity(
+    array(
+        'name' => $build['#bundle']
+    )
+  );
+  if ($bundle->type_value == 'kegg_analysis') {
+    // Add KEGG report
+    $build['tripal_analysis_kegg_report'] = array(
+      '#theme' => 'tripal_analysis_kegg_report',
+      '#node' => $build['#node'],
+      '#tripal_toc_id' => 'kegg_report',
+      '#tripal_toc_title' => 'KEGG Report',
+    );
+    // Hide properties
+    unset($build['tripal_analysis_properties']);
+  }
+}
