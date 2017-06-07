@@ -83,7 +83,7 @@ class KeggImporter extends TripalImporter {
         '#default_value' => $query_type,
         '#autocomplete_path' => "admin/tripal/storage/chado/auto_name/cvterm/$cv_id",
     );
-    
+
     $sql = "
     SELECT organism_id, genus, species
     FROM {organism}
@@ -145,23 +145,23 @@ class KeggImporter extends TripalImporter {
     $query_type = $arguments['query_type'];
     $query_uniquename =$arguments['query_uniquename'];
     $organism_id = $arguments['organism_id'];
-    
+
     $this->parseHierFile($analysis_id, $hierfile, $base_path,
       $query_re, $query_type, $query_uniquename, $organism_id, $job_id);
   }
 
-  
+
   /**
    * @file
    * Parser and loader for KEGG/KAAS analysis result
    */
-  
+
   function parseHierFile($analysis_id, $hierfile, $base_path,
       $query_re, $query_type, $query_uniquename, $organism_id, $job_id) {
-        
+
         $transaction = db_transaction();
         try {
-          
+
           // If user input a file (e.g. hier.tar.gz), decompress it first
           if (is_file($hierfile)) {
             $this->logMessage(t("Unpacking heir file...\n"));
@@ -190,8 +190,8 @@ class KeggImporter extends TripalImporter {
           $this->logMessage(t("Counting Files...\n"));
           $dir_handle = @opendir($hierdir) or die("Unable to open unpacked KEGG heir directory: $hierdir\n");
           $total_files = count(glob($hierdir . '/*.keg'));
-          
-          
+
+
           // Remove the analysis features for this analysis
           // we will rebuild them from just this parsing
           $select =  array('analysis_id' => $analysis_id);
@@ -199,7 +199,7 @@ class KeggImporter extends TripalImporter {
             watchdog('trp_kegg',"ERROR: Unable to clear previous results", array(), 'error');
             exit;
           }
-          
+
           // remove the analysis BRITE_TERMS from the analysisprop table
           $this->logMessage(t("Preparing database...\n"));
           $sql = "
@@ -215,21 +215,21 @@ class KeggImporter extends TripalImporter {
             watchdog('trp_kegg',"ERROR: Unable to clear previous analysisprop results.", array(), 'error');
             exit;
           }
-          
+
           // iterate through the files in the directory
           while ($file = readdir($dir_handle)) {
-            
+
             if (preg_match("/^.*\.keg/", $file)) {
               $no_file++;
-              
+
               # $hierarchy variable will be set in $this->parseKeggFile()
               $results = $this->parseKeggFile("$hierdir/$file", $hierarchy,
                   $analysis_id, $organism_id, $base_path, $query_re, $query_type,
                   $query_uniquename, $no_file, $total_files);
-              
+
               # add the item to the database
               if (count($results) > 0) {
-                
+
                 // Get type_id for the BRITE term
                 $values = array(
                   'cv_id' => array(
@@ -245,7 +245,7 @@ class KeggImporter extends TripalImporter {
                   exit;
                 }
                 $brite_cvterm_id = $brite_term[0]->cvterm_id;
-                
+
                 // KEGG results are returned in an array format, however
                 // to make display a bit easier on the web using CSS, the array
                 // will be reformated within a <ul> HTML heirarchy and stored
@@ -253,10 +253,10 @@ class KeggImporter extends TripalImporter {
                 $content = '<ul>';
                 $this->arrayToList($results, $content, $i);
                 $content .= '</ul>';
-                
+
                 // Replace all single quote as HTML code before insert
                 $content = preg_replace("/\'/", "&#39;", $content);
-                
+
                 // Insert the value
                 $values = array(
                   'analysis_id' => $analysis_id,
@@ -273,9 +273,9 @@ class KeggImporter extends TripalImporter {
               }
             }
           }
-          
+
           closedir($dir_handle);
-          
+
           // If user input a file, remove decompressed files after parsing
           if (is_file($hierfile)) {
             $stderr = shell_exec('rm -r ' . escapeshellarg($data_dir));
@@ -323,9 +323,9 @@ class KeggImporter extends TripalImporter {
    */
   function parseKeggFile($file, &$hierarchy, $analysis_id, $organism_id,
       $base_path, $query_re, $query_type, $query_uniquename, $no_file, $total_files) {
-        
+
         $filepos = 0;
-        
+
         // iterate through the lines of the file and recurse through the various levels
         $handle = fopen($file, 'r');
         $hierarchy = '';
@@ -334,14 +334,14 @@ class KeggImporter extends TripalImporter {
         $intv_read = 0;
         $matches = array();
         $filename = preg_replace('/^.*\/(.*)$/','\1', $file);
-        
+
         while ($line = fgets($handle)) {
           $filepos += strlen($line);
           $intv_read += strlen($line);
           $line = trim($line);
-          
+
           $this->parseHeirUpdateJob($filepos, $filesize, $intv_read, $no_file, $total_files, $filename);
-          
+
           // the .keg files represtend the KEGG BRITE Functional heirarchies.  These
           // heirarchies begin with a ko
           if (preg_match("/#.*nbsp;\s(.*)<\/h2>$/", $line, $matches)) {
@@ -359,10 +359,10 @@ class KeggImporter extends TripalImporter {
             if ($hierarchy_id == 'ko01006' and $hierarchy == 'Amino acid related enzymes') {
               $hierarchy_id = 'ko01007';
             }
-            
+
             // add the cvterm
             $brite_term =
-            
+
             $cvterm = tripal_insert_cvterm(array(
               'id' => "$hierarchy_id",
               'name' => $hierarchy,
@@ -377,11 +377,11 @@ class KeggImporter extends TripalImporter {
                   array('%heirarchy', $hierarchy), 'error');
               return;
             }
-            
+
             // now that we have the file type we can recurse
             $next = $this->getNextLine($handle, $filepos, $filesize,
                 $intv_read, $no_file, $total_files, $filename);
-            
+
             $results = $this->recurseHeir($handle, $next, $query_re,
                 $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id, $hierarchy,
                 $filepos, $filesize, $intv_read, $no_file, $total_files, $filename);
@@ -390,7 +390,7 @@ class KeggImporter extends TripalImporter {
         fclose($handle);
         return $results;
   }
-  
+
   /**
    *
    */
@@ -398,12 +398,12 @@ class KeggImporter extends TripalImporter {
       $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id,
       $hierarchy, &$filepos, $filesize, &$intv_read, $no_file, $total_files, $file) {
         $results = array();
-        
+
         // get the current level and the value
         $level = $line[0];
         $value = $line[1];
         $pathway = $line[2];
-        
+
         // now get the next line to see what is coming next.  If the
         // next level is greater then recurse immediately.
         $prevpos = $filepos;
@@ -411,7 +411,7 @@ class KeggImporter extends TripalImporter {
           $next_level = $next[0];
           $next_value = $next[1];
           $next_pathway = $next[2];
-          
+
           // if we have a pathway from our current line and our next line does
           // not then that means we are traveling down the heirarcical tree in the
           // q00001.keg file. We need to make sure the pathway gets set for
@@ -422,7 +422,7 @@ class KeggImporter extends TripalImporter {
             $next_pathway['type_id'] = $pathway['type_id'];
             $next[2] = $next_pathway;
           }
-          
+
           // check this line to see if it has a feature we need to keep
           $ret = $this->checkLineHandleFeature($query_re,
               $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id,
@@ -430,7 +430,7 @@ class KeggImporter extends TripalImporter {
           if ($ret) {
             $results[] = $ret;
           }
-          
+
           // if we're going up a level then recurse immediately and add results to our array
           if (ord($next_level) > ord($level)) {
             // now recurse
@@ -441,7 +441,7 @@ class KeggImporter extends TripalImporter {
               $results[][$value] = $ret;
             }
           }
-          
+
           // if we go down a level on the next line then reset the
           // filepointer and return
           elseif (ord($next_level) < ord($level)) {
@@ -456,25 +456,25 @@ class KeggImporter extends TripalImporter {
           }
           $prevpos = $filepos;
         }
-        
+
         return $results;
   }
   /**
    *
    */
-  
+
   function getNextLine($handle, &$filepos, $filesize, &$intv_read, $no_file, $total_files, $filename) {
     $good = 0;
     $level = '';
     $value = '';
     $pathway = array();
-    
+
     // get the next line in the file
     $line = fgets($handle);
     $filepos += strlen($line);
     $intv_read += strlen($line);
     $this->parseHeirUpdateJob($filepos, $filesize, $intv_read, $no_file, $total_files, $filename);
-    
+
     // we hit the end of the file, so exit with a NULL
     if (!$line) {
       return NULL;
@@ -484,17 +484,17 @@ class KeggImporter extends TripalImporter {
       preg_match("/^([ABCDEFGHIJKLMNOP])\s*(.*)/", $line, $matches);
       $level = $matches[1];
       $value = $matches[2];
-      
+
       // skip lines that aren't data or are empty
       if ($level and $value) {
-        
+
         // check to see if this is a line identifying a KEGG pathway
         //print "$value\n";
         if (preg_match("/^(\d+)\s+(.*?)\s+\[PATH:.*>(.*)<\/a>]$/", $value, $pathmatch) > 0) {
           $pathway['id'] = $pathmatch[3];
           $pathway['name'] = $pathmatch[2];
           $pathway['def'] = $pathmatch[2];
-          
+
           // add the pathway as a cvterm
           $pathway_term = array(
             'id' => $pathway['id'],
@@ -515,12 +515,12 @@ class KeggImporter extends TripalImporter {
             $pathway['type_id'] = $pathway_id;
           }
         }
-        
+
         // change all relative paths to absolute paths pointing to KEGG (www.genome.jp)
         // add id to <a> tags so we can link kegg.gif to it in tripal_analysis_kegg.css
         $value = preg_replace("/<a href=\"\//i", "<a href=\"http://www.genome.jp/", $value);
         $value = preg_replace("/<a href=\"/i", "<a id=\"tripal_kegg_brite_links\" target=\"_blank\" href=\"", $value);
-        
+
         // this line is good so let's exit out
         $good = 1;
       }
@@ -543,20 +543,20 @@ class KeggImporter extends TripalImporter {
   function checkLineHandleFeature($query_re,
       $query_type, $query_uniquename, $base_path, $analysis_id, $organism_id,
       $hierarchy, $value, $pathway) {
-        
+
         // extract the features that have been mapped to the KEGG IDs
         if (preg_match("/^(.*?);\s*(\<a.+)/", $value, $matches)) {
           $has_feature = 1;
           $fname = $matches[1];
           $keggterm = $matches[2];
-          
+
           // get the KEGG ortholog and add it as a term
           $ko_type_id = '';
           $ko_def = '';
           $ko_id = '';
           $ko_cvname = '';
           $ko_dbname = '';
-          
+
           if (preg_match("/^<a.*>(K.*?)<\/a>\s+(.*)$/", $keggterm, $matchparts)) {
             $ko_id = $matchparts[1];
             $ko_def = $matchparts[2];
@@ -573,7 +573,7 @@ class KeggImporter extends TripalImporter {
               'db_name' => $ko_dbname,
             );
             $cvterm = tripal_insert_cvterm($ko_term);
-            
+
             if (!$cvterm) {
               watchdog('trp_kegg', "Failure to add KEGG ORTHOLOGY term to cvterm table: %ko_id %ko_def. Cannot add term to feature",
                   array('%ko_id' => $ko_id, '%ko_def' => $ko_def), WATCHDOG_ERROR);
@@ -608,8 +608,8 @@ class KeggImporter extends TripalImporter {
               $ko_type_id = $cvterm->cvterm_id;
             }
           }
-          
-          
+
+
           // get the feature name using the user's regular expression
           if ($query_re and preg_match("/$query_re/", $fname, $matches)) {
             $feature = $matches[1];
@@ -624,7 +624,7 @@ class KeggImporter extends TripalImporter {
               $feature = $fname;
             }
           }
-          
+
           // now find the feature in chado
           $select = array();
           if ($query_uniquename) {
@@ -645,7 +645,7 @@ class KeggImporter extends TripalImporter {
             );
           }
           $feature_arr = chado_select_record('feature', array('feature_id'), $select);
-          
+
           if (count($feature_arr) > 1) {
             watchdog('trp_kegg', "Failed (Ambiguous): '%feature' matches more than one feature and is being skipped.",
                 array('%feature' => $feature), 'error');
@@ -657,10 +657,10 @@ class KeggImporter extends TripalImporter {
             return;
           }
           $feature_id = $feature_arr[0]->feature_id;
-          
+
           // if we match with a feature then add in all the properties.
           if ($feature_id) {
-            
+
             // add the analysisfeature record if it doesn't already exist.
             $columns = array('analysisfeature_id');
             $values = array(
@@ -682,7 +682,7 @@ class KeggImporter extends TripalImporter {
               }
             }
             $analysisfeature_id = $analysisfeature_arr[0]->analysisfeature_id;
-            
+
             // add this term to the analysis feature properties
             $success = chado_insert_property(
                 array('table' => 'analysisfeature', 'id' => $analysisfeature_id),
@@ -692,13 +692,15 @@ class KeggImporter extends TripalImporter {
               watchdog('trp_kegg', "Failed: Could not add orthlog to feature.  Feature Id: %feature_id, Ortholog: '%ortholog'",
                   array('%feature_id' => $feature_id, '%ortholog' => $ko_id), 'warning');
             }
-            
+
             // Insert term into the feature_cvterm table. if the cvterm already
             // exists then just skip adding it
             $values = array(
               'feature_id' => $feature_id,
               'cvterm_id' => $cvterm->cvterm_id,
-              'pub_id' => 1,
+              'pub_id' => array(
+                'uniquename' => 'null',
+              ),
             );
             $columns = array('*');
             $fcvterm = chado_select_record('feature_cvterm', $columns, $values);
@@ -710,7 +712,7 @@ class KeggImporter extends TripalImporter {
                 return;
               }
             }
-            
+
             // associate this pathway with the feature
             if (count($pathway) > 0) {
               $success = chado_insert_property(
@@ -721,7 +723,7 @@ class KeggImporter extends TripalImporter {
                 watchdog('trp_kegg', "Failed: Could not add pathway to feature.  Feature Id: %feature_id, Pathway: '%pathway'",
                     array('%feature_id' => $feature_id, '%pathway' => $pathway['name']), 'warning');
               }
-              
+
               // Insert pathway into the feature_cvterm table. if the cvterm already
               // exists then just skip adding it
               $values = array(
@@ -740,14 +742,17 @@ class KeggImporter extends TripalImporter {
                 }
               }
             }
-            
-            // get the node ID of the feature if one exists
-            $nid = chado_get_nid_from_id('feature', $feature_id);
-            
-            // Add link to each matched feature
-            if ($nid) {
-              // TODO: remove the domain from the base path to make the link relative
-              $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$base_path/node/$nid\">"."$1"."</a>"."$2", $value);
+
+            // Get the node ID of the feature if one exists if the legacy
+            // module is enabled.
+            if (module_exists('tripal_feature')) {
+              $nid = chado_get_nid_from_id('feature', $feature_id);
+
+              // Add link to each matched feature
+              if ($nid) {
+                // TODO: remove the domain from the base path to make the link relative
+                $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$base_path/node/$nid\">"."$1"."</a>"."$2", $value);
+              }
             }
             // if we have a feature match then add this to our results array
             return $value;
@@ -755,7 +760,7 @@ class KeggImporter extends TripalImporter {
         }
         return NULL;
   }
-  
+
   /*
    *
    */

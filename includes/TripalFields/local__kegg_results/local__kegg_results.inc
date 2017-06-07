@@ -55,7 +55,7 @@ class local__kegg_results extends ChadoField {
 
     // Get the list of results.
     $kegg_report = tripal_analysis_kegg_full_report($record->analysis_id);
-    $entity->{$field_name}['und'][$delta] = array(
+    $entity->{$field_name}['und'][0] = array(
       'value' => $kegg_report,
     );
   }
