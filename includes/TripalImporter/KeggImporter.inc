@@ -754,6 +754,14 @@ class KeggImporter extends TripalImporter {
                 $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$base_path/node/$nid\">"."$1"."</a>"."$2", $value);
               }
             }
+            // If there is no link to the node, try linking to the entity
+            if (!$nid) {
+              $eid = chado_get_record_entity_by_table('feature', $feature_id);
+              if ($eid) {
+                // TODO: remove the domain from the base path to make the link relative
+                $value = preg_replace("/^(.*?)(;\s*\<a)/", "<a id=\"tripal_kegg_feature_links\" target=\"_blank\" href=\"$base_path/bio_data/$eid\">"."$1"."</a>"."$2", $value);
+              }
+            }
             // if we have a feature match then add this to our results array
             return $value;
           }

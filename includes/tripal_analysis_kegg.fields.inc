@@ -67,3 +67,50 @@ function tripal_analysis_kegg_bundle_instances_info($entity_type, $bundle) {
   }
   return $info;
 }
+
+/**
+ * Implements hook_bundle_fields_info_alter().
+ *
+ * This is a Tripal defined hook.
+ */
+function tripal_analysis_kegg_bundle_fields_info_alter(&$info, $bundle, $term) {
+  if ($term->vocab->vocabulary == 'local' and $term->accession == 'kegg_results') {
+    // We don't need the source version field.
+    if (array_key_exists('iao__algorithm', $info)) {
+      unset($info['iao__algorithm']);
+    }
+  }
+}
+/**
+ * Implements hook_bundle_instances_info_alter().
+ *
+ * This is a Tripal defined hook.
+ */
+function tripal_analysis_kegg_bundle_instances_info_alter(&$info, $bundle, $term) {
+  
+  if ($term->vocab->vocabulary == 'local' and $term->accession == 'kegg_results') {
+    // We don't need the source version field.
+    if (array_key_exists('iao__algorithm', $info)) {
+      unset($info['iao__algorithm']);
+    }
+    
+    // Set a default for the local analysis type field
+    if (array_key_exists('local__analysis_type', $info)) {
+      $info['local__analysis_type']['default_value'][0]['value'] = 'kegg_analysis';
+    }
+    
+    // Rename some field labels and descriptions to be more appropriate.
+    if (array_key_exists('swo__software', $info)) {
+      $info['swo__software']['label'] = 'KEGG Program';
+      $info['swo__software']['description'] = 'The KEGG program name (e.g. KEGG, KAAS, etc).';
+    }
+    if (array_key_exists('iao__version_number', $info)) {
+      $info['iao__version_number']['label'] = 'KEGG Version';
+      $info['iao__version_number']['description'] = 'The version of KEGG used to generate the results.';
+    }
+    if (array_key_exists('local__source_data', $info)) {
+      $info['local__source_data']['label'] = 'Query File Source';
+      $info['local__source_data']['description'] = 'Please provide information, if available, regarding where the query file used for this kegg analysis was obtained.';
+    }
+  }
+}
