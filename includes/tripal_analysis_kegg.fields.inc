@@ -8,7 +8,7 @@
  */
 function tripal_analysis_kegg_bundle_fields_info($entity_type, $bundle) {
   $info = array();
-  
+
   $term = tripal_load_term_entity(array('term_id' => $bundle->term_id));
   $vocab = $term->vocab;
   if ($vocab->vocabulary == 'local' && $term->accession == 'kegg_results') {
@@ -35,7 +35,7 @@ function tripal_analysis_kegg_bundle_fields_info($entity_type, $bundle) {
  */
 function tripal_analysis_kegg_bundle_instances_info($entity_type, $bundle) {
   $info = array();
-  
+
   $term = tripal_load_term_entity(array('term_id' => $bundle->term_id));
   $vocab = $term->vocab;
 
@@ -87,18 +87,18 @@ function tripal_analysis_kegg_bundle_fields_info_alter(&$info, $bundle, $term) {
  * This is a Tripal defined hook.
  */
 function tripal_analysis_kegg_bundle_instances_info_alter(&$info, $bundle, $term) {
-  
+
   if ($term->vocab->vocabulary == 'local' and $term->accession == 'kegg_results') {
     // We don't need the source version field.
     if (array_key_exists('iao__algorithm', $info)) {
       unset($info['iao__algorithm']);
     }
-    
+
     // Set a default for the local analysis type field
     if (array_key_exists('local__analysis_type', $info)) {
       $info['local__analysis_type']['default_value'][0]['value'] = 'kegg_analysis';
     }
-    
+
     // Rename some field labels and descriptions to be more appropriate.
     if (array_key_exists('swo__software', $info)) {
       $info['swo__software']['label'] = 'KEGG Program';
