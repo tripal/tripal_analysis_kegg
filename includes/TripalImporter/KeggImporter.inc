@@ -140,7 +140,7 @@ class KeggImporter extends TripalImporter {
   public function run() {
     $arguments = $this->arguments['run_args'];
     $analysis_id = $arguments['analysis_id'];
-    $hierfile= trim($this->arguments['file']['file_path']);
+    $hierfile= trim($this->arguments['files'][0]['file_path']);
     $query_re = $arguments['query_re'];
     $query_type = $arguments['query_type'];
     $query_uniquename =$arguments['query_uniquename'];
