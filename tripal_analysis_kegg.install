@@ -5,8 +5,11 @@
  */
 function tripal_analysis_kegg_install() {
 
-  // Register this analysis module.
-  tripal_register_analysis_child('tripal_analysis_kegg');
+  // For Tripal v2 backwards compatibility, register this
+  // module as an analysis.
+  if (module_exists('tripal_analysis')) {
+    tripal_register_analysis_child('tripal_analysis_kegg');
+  }
 
   // Add the cvterms needed for this module.
   tripal_analysis_kegg_add_cvterms();
@@ -173,7 +176,11 @@ function tripal_analysis_kegg_add_cvterms() {
 * Implementation of hook_uninstall()
 */
 function tripal_analysis_kegg_uninstall() {
-  tripal_unregister_analysis_child('tripal_analysis_kegg');
+  // For Tripal v2 backwards compatibility, unregister this
+  // module as an analysis.
+  if (module_exists('tripal_analysis')) {
+    tripal_unregister_analysis_child('tripal_analysis_kegg');
+  }
 
   $mview_id = tripal_get_mview_id('kegg_by_organism');
   if ($mview_id) {
@@ -210,7 +217,7 @@ function tripal_analysis_kegg_create_entity_type () {
     'cv_name' => 'local',
     'definition' => 'Results for KEGG analysis.',
   ));
-  
+
   $error = '';
   $args = array(
     'vocabulary' => 'local',
