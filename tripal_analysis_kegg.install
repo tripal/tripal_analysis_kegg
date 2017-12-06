@@ -56,8 +56,12 @@ function tripal_analysis_kegg_install() {
   tripal_insert_cv('KEGG_ORTHOLOGY', 'Holds terms from the KEGG ORTHOLOGY database.');
   tripal_insert_cv('KEGG_MODULE',  'Holds terms from the KEGG MODULE database.');
 
+  // define the entity type
+  tripal_analysis_kegg_create_entity_type();
+
   // Add the materialized view
   tripal_analysis_kegg_add_mview_kegg_by_organism();
+
 }
 
 
@@ -328,6 +332,7 @@ function tripal_analysis_kegg_update_7202() {
 /**
  * Create KEGG results entity type
  */
+
 function tripal_analysis_kegg_update_7301() {
   try {
     tripal_analysis_kegg_create_entity_type();
