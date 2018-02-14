@@ -17,38 +17,42 @@ else
   $output_file = "kegg.obo";
   $file_contents = "";
 
+  // Iterate through file and get all terms
   foreach($argv as $file) {
     if ($file == $argv[0]) continue;
     $input = file_get_contents($file);
     $data = json_decode($input);
-
-    $file_contents .= $data;
-  }
-
     $previous_object = $data->name;
-    get_terms($data->children, $terms, $names, $previous_object);
-    // Output headers
-    $output = "format-version: 1.2\ndefault-namespace: kegg ontology\n\n";
-    // Output first object
-    $output .= "[Term]\n";
-    $output .= "id: $db_name:$data->name\n";
-    $output .= "name: $data->name\n\n";
+    echo "$previous_object\n";
+    // Create first term
+    $term = new Term();
+    $term->id = $data->name;
+    $term->name = $data->name;
+    $terms[] = $term;
 
-    // Loop through all terms
-    foreach ($terms as $term) {
-      $output .= "[Term]\n";
-      $output .= "id: $db_name$term->id\n";
-      $output .= "name: $term->name\n";
-      if ($term->description) {
-        $output .= "def: $term->description\n";
-      }
-      foreach ($term->parents as $parent) {
-        $output .= "is_a: $db_name$parent\n";
-      }
-      $output .= "\n";
+    get_terms($data->children, $terms, $names, $previous_object);
+    $terms_size = count($names);
+    echo "$terms_size\n";
   }
-  // Output the contents of the file
+
+  // Output headers
+  $output = "format-version: 1.2\ndefault-namespace: kegg ontology\n\n";
+
+  // Print out all the terms
+  foreach ($terms as $term) {
+    $output .= "[Term]\n";
+    $output .= "id: $db_name$term->id\n";
+    $output .= "name: $term->name\n";
+    if ($term->description) $output .= "def: $term->description\n";
+    foreach ($term->parents as $parent) {
+      // If parent name matches term id, ignore it
+      if ($parent == $term->id) continue;
+      $output .= "is_a: $db_name$parent\n";
+    }
+    $output .= "\n";
+  }
   file_put_contents($output_file, $output);
+  var_dump($terms);
 }
 
 function get_terms($children, &$terms, &$names, &$previous_object)
@@ -80,7 +84,6 @@ function get_terms($children, &$terms, &$names, &$previous_object)
       $names[] = $children->name;
     }
 
-
     return get_terms($children->children, $terms, $names, $previous_object);
   }
 
@@ -89,7 +92,7 @@ function get_terms($children, &$terms, &$names, &$previous_object)
   {
     if (!in_array($children->name, $names))
     {
-      // This is a leaf; create new term and fill
+      // Create new term and fill
       $term = new Term();
       $access_name = explode("  ", $children->name);
       $term->id = $access_name[0];
@@ -105,7 +108,7 @@ function get_terms($children, &$terms, &$names, &$previous_object)
       $terms[] = $term;
 
       $names[] = $children->name;
-      // If the term already exists, add the previous object as a relationship
+      // If the term already exists, add only the parent to the existing term
     } else {
       $search_name = explode("  ", $children->name);
       foreach($terms as $term)
