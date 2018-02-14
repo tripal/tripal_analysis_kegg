@@ -1,0 +1,57 @@
+format-version: 1.2
+default-namespace: kegg ontology
+
+[Term]
+id: KEGG::Enzyme
+name: Enzyme
+
+[Term]
+id: KEGG:1. Oxidoreductases
+name: 1. Oxidoreductases
+is_a: KEGG:Enzyme
+
+[Term]
+id: KEGG:1.1
+name: Acting on the CH-OH group of donors
+is_a: KEGG:1. Oxidoreductases
+
+[Term]
+id: KEGG:1.1.1
+name: With NAD+ or NADP+ as acceptor
+is_a: KEGG:1.1
+
+[Term]
+id: KEGG:1.1.1.1
+name: alcohol dehydrogenase
+is_a: KEGG:1.1.1
+
+[Term]
+id: KEGG:K00001
+name: E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]
+def:  alcohol dehydrogenase [EC:1.1.1.1]
+is_a: KEGG:1.1.1.1
+
+[Term]
+id: KEGG:K00121
+name: frmA, ADH5, adhC; S-(hydroxymethyl)glutathione dehydrogenase / alcohol dehydrogenase [EC:1.1.1.284 1.1.1.1]
+def:  S-(hydroxymethyl)glutathione dehydrogenase / alcohol dehydrogenase [EC:1.1.1.284 1.1.1.1]
+is_a: KEGG:1.1.1.1
+
+[Term]
+id: KEGG:K04072
+name: adhE; acetaldehyde dehydrogenase / alcohol dehydrogenase [EC:1.2.1.10 1.1.1.1]
+def:  acetaldehyde dehydrogenase / alcohol dehydrogenase [EC:1.2.1.10 1.1.1.1]
+is_a: KEGG:1.1.1.1
+
+[Term]
+id: KEGG:K11440
+name: gbsB; choline dehydrogenase [EC:1.1.1.1]
+def:  choline dehydrogenase [EC:1.1.1.1]
+is_a: KEGG:1.1.1.1
+
+[Term]
+id: KEGG:K13951
+name: ADH1_7; alcohol dehydrogenase 1/7 [EC:1.1.1.1]
+def:  alcohol dehydrogenase 1/7 [EC:1.1.1.1]
+is_a: KEGG:1.1.1.1
+

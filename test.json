@@ -1,0 +1,40 @@
+{
+  "name":"Enzyme",
+  "children":[
+    {
+      "name":"1. Oxidoreductases",
+      "children":[
+        {
+          "name":"1.1  Acting on the CH-OH group of donors",
+          "children":[
+            {
+              "name":"1.1.1  With NAD+ or NADP+ as acceptor",
+              "children":[
+                {
+                  "name":"1.1.1.1  alcohol dehydrogenase",
+                  "children":[
+                    {
+                      "name":"K00001  E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]"
+                    },
+                    {
+                      "name":"K00121  frmA, ADH5, adhC; S-(hydroxymethyl)glutathione dehydrogenase \/ alcohol dehydrogenase [EC:1.1.1.284 1.1.1.1]"
+                    },
+                    {
+                      "name":"K04072  adhE; acetaldehyde dehydrogenase \/ alcohol dehydrogenase [EC:1.2.1.10 1.1.1.1]"
+                    },
+                    {
+                      "name":"K11440  gbsB; choline dehydrogenase [EC:1.1.1.1]"
+                    },
+                    {
+                      "name":"K13951  ADH1_7; alcohol dehydrogenase 1\/7 [EC:1.1.1.1]"
+                    }
+                    ]
+                }
+                ]
+            }
+            ]
+        }
+        ]
+    }
+    ]
+}
