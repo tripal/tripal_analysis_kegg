@@ -23,7 +23,6 @@ else
     $input = file_get_contents($file);
     $data = json_decode($input);
     $previous_object = $data->name;
-    echo "$previous_object\n";
     // Create first term
     $term = new Term();
     $term->id = $data->name;
@@ -32,7 +31,6 @@ else
 
     get_terms($data->children, $terms, $names, $previous_object);
     $terms_size = count($names);
-    echo "$terms_size\n";
   }
 
   // Output headers
@@ -52,7 +50,6 @@ else
     $output .= "\n";
   }
   file_put_contents($output_file, $output);
-  var_dump($terms);
 }
 
 function get_terms($children, &$terms, &$names, &$previous_object)
@@ -80,13 +77,16 @@ function get_terms($children, &$terms, &$names, &$previous_object)
       }
       $term->parents[] = $previous_object;
       $previous_object = $term->id;
-      $terms[] = $term;
+      if (isset($terms[$term])) {
+        $terms[$term] = $previous_object;
+      } else {
+        $terms[] = $term;
+      }
       $names[] = $children->name;
     }
 
     return get_terms($children->children, $terms, $names, $previous_object);
   }
-
   // This is an object that does not have children
   if (is_object($children))
   {
@@ -105,11 +105,15 @@ function get_terms($children, &$terms, &$names, &$previous_object)
         $term->name = $term->id;
       }
       $term->parents[] = $previous_object;
-      $terms[] = $term;
+
+      if (isset($terms[$term])) {
+        $terms[$term] = $previous_object;
+      } else {
+        $terms[] = $term;
+      }
 
       $names[] = $children->name;
-      // If the term already exists, add only the parent to the existing term
-    } else {
+    } /* else {
       $search_name = explode("  ", $children->name);
       foreach($terms as $term)
       {
@@ -120,6 +124,6 @@ function get_terms($children, &$terms, &$names, &$previous_object)
           break;
         }
       }
-    }
+    } */
   }
 }
