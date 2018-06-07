@@ -1,7 +1,6 @@
 <?php
 
-class Term
-{
+class Term {
   public $name;
   public $id;
   public $description;
@@ -9,8 +8,7 @@ class Term
 }
 
 if ($argc < 2) echo "Please specify input files for parsing.\n";
-else
-{
+else {
   $terms = array();
   $db_name = "KEGG:";
   $output_file = "kegg.obo";
@@ -21,14 +19,14 @@ else
     if ($file == $argv[0]) continue;
     $input = file_get_contents($file);
     $data = json_decode($input);
-    $previous_object = $data->name;
+    $previous_objects[] = $data;
     // Create first term
     $term = new Term();
     $term->id = $data->name;
     $term->name = $data->name;
     $terms[$term->id] = $term;
 
-    get_terms($data->children, $terms, $previous_object);
+    get_terms($data->children, $terms, $previous_objects);
   }
 
   // Output headers
@@ -48,17 +46,21 @@ else
     $output .= "\n";
   }
   file_put_contents($output_file, $output);
-  // var_dump($terms);
 }
-
-function get_terms($children, &$terms, &$previous_object)
-{
+/**
+ * @param $children
+ * @param $terms
+ * @param $previous_objects
+ *
+ * @return mixed
+ */
+function get_terms($children, &$terms, $previous_objects) {
   // We have reached the leaves here
   if (is_array($children))
   {
     foreach($children as $child)
     {
-      get_terms($child, $terms, $previous_object);
+      get_terms($child, $terms, $previous_objects);
     }
   }
   // Add term and proceed one layer deeper
@@ -68,24 +70,20 @@ function get_terms($children, &$terms, &$previous_object)
     $term->id = $separated_name[0];
     if (count($separated_name) > 1) {
       $term->name = $separated_name[1];
-    }
-    else {
+    } else {
       $term->name = $term->id;
     }
-    $term->parents[] = $previous_object;
-    $previous_object = $term->id;
+    $term->parents[] = end($previous_objects)->name;
+    $previous_objects[] = $children;
     if (isset($terms[$term->id])) {
-      $terms[$term->id]->parents[] = $previous_object;
-    }
-    else {
+      $terms[$term->id]->parents[] = end($previous_objects)->name;
+    } else {
       $terms[$term->id] = $term;
     }
 
-    return get_terms($children->children, $terms, $previous_object);
+    return get_terms($children->children, $terms, $previous_objects);
   }
-  // This is an object that does not have children
   if (is_object($children)) {
-    // Create new term and fill
     $term = new Term();
     $access_name = explode("  ", $children->name);
     $term->id = $access_name[0];
@@ -95,17 +93,35 @@ function get_terms($children, &$terms, &$previous_object)
       if (count($desc_name) > 1) {
         $term->description = $desc_name[1];
       }
-    }
-    else {
+    } else {
       $term->name = $term->id;
     }
-    $term->parents[] = $previous_object;
+    $term->parents[] = end($previous_objects)->name;
 
     if (isset($terms[$term->id])) {
-      $terms[$term->id]->parents[] = $previous_object;
-    }
-    else {
+      // Duplicate relationship protection
+      if (!in_array(end($previous_objects)->name, $terms[$term->id]->parents))
+        $terms[$term->id]->parents[] = end($previous_objects)->name;
+    } else {
       $terms[$term->id] = $term;
     }
+
+    update_object_array($children, $previous_objects);
+  }
+}
+
+function update_object_array($current_object, &$object_array) {
+  $reverse_object_array = array_reverse($object_array);
+
+  foreach($reverse_object_array as $object) {
+    $size = count($object->children) - 1;
+
+    if ($current_object->name == $object->children[$size]->name) {
+      array_pop($object_array);
+      $current_object = $object;
+      continue;
+    }
+
+    break;
   }
 }
