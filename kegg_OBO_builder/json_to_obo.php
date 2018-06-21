@@ -8,7 +8,9 @@ class Term {
 
   // The number of times this term occurs
   // Allows duplicates to sometimes occur, which we want
-  public $count;
+  public $count = 0;
+  public $subtype = '';
+  public $has_duplicate = false;
 }
 
 if ($argc < 2) echo "Please specify input files for parsing.\n";
@@ -23,7 +25,7 @@ else {
     if ($file == $argv[0]) continue;
     $input = file_get_contents($file);
     $data = json_decode($input);
-    $previous_objects[] = $data;
+    $previous_objects[0] = $data;
     // Create first term
     $term = new Term();
     $term->id = $data->name;
@@ -38,8 +40,9 @@ else {
 
   // Print out all the terms
   foreach ($terms as $value) {
-    $term_id = explode('__', $value->id);
-    $term_id = $term_id[0];
+    $term_id = explode('__', $value->id)[0];
+    // Append a unique identifier so the OBO doesn't break on duplicates
+    if ($value->has_duplicate) $term_id .= " ($value->subtype)";
 
     $output .= "[Term]\n";
     $output .= "id: $db_name$term_id\n";
@@ -84,13 +87,27 @@ function get_terms($children, &$terms, $previous_objects) {
     $term->parents[] = end($previous_objects)->name;
 
     if (isset($terms[$term->id])) {
-//      if (!in_array(end($previous_objects)->name, $terms[$term->id]->parents))
-//        $terms[$term->id]->parents[] = end($previous_objects)->name;
-      $terms[$term->id]->count++;
-      $term_id = $term->id . '__' . $terms[$term->id]->count;
-      $terms[$term_id] = $term;
+      $found = false;
+      for ($i = 0; $i < $terms[$term->id]->count; $i++) {
+        $tid = $term->id . '__' . ($i + 1);
+        if ($previous_objects[0]->name == $terms[$tid]->subtype && !in_array(end($previous_objects)->name, $terms[$tid]->parents)) {
+          $terms[$tid]->parents[] = end($previous_objects)->name;
+          $found = true;
+          break;
+        }
+      }
+      if (!$found) {
+        $terms[$term->id]->count++;
+        $term_id = $term->id . '__' . $terms[$term->id]->count;
+        $terms[$term_id] = $term;
+        $terms[$term_id]->subtype = $previous_objects[0]->name;
+        $terms[$term_id]->has_duplicate = true;
+        $terms[$term->id]->has_duplicate = true;
+      }
+
     } else {
       $terms[$term->id] = $term;
+      $terms[$term->id]->subtype = $previous_objects[0]->name;
     }
 
     $previous_objects[] = $children;
