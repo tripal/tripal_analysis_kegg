@@ -5,6 +5,10 @@ class Term {
   public $id;
   public $description;
   public $parents = array();
+
+  // The number of times this term occurs
+  // Allows duplicates to sometimes occur, which we want
+  public $count;
 }
 
 if ($argc < 2) echo "Please specify input files for parsing.\n";
@@ -33,9 +37,12 @@ else {
   $output = "format-version: 1.2\ndefault-namespace: kegg ontology\n\n";
 
   // Print out all the terms
-  foreach ($terms as $key => $value) {
+  foreach ($terms as $value) {
+    $term_id = explode('__', $value->id);
+    $term_id = $term_id[0];
+
     $output .= "[Term]\n";
-    $output .= "id: $db_name$value->id\n";
+    $output .= "id: $db_name$term_id\n";
     $output .= "name: $value->name\n";
     if ($value->description) $output .= "def: $value->description\n";
     foreach ($value->parents as $parent) {
@@ -45,6 +52,7 @@ else {
     }
     $output .= "\n";
   }
+
   file_put_contents($output_file, $output);
 }
 /**
@@ -53,8 +61,11 @@ else {
  * @param $previous_objects
  *
  * @return mixed
+ *
+ *  Iterates through each object in the JSON file and returns an array of terms.
  */
 function get_terms($children, &$terms, $previous_objects) {
+
   // We have reached the leaves here
   if (is_array($children))
   {
@@ -63,26 +74,30 @@ function get_terms($children, &$terms, $previous_objects) {
       get_terms($child, $terms, $previous_objects);
     }
   }
+
   // Add term and proceed one layer deeper
   if (is_object($children) && property_exists($children, "children")) {
     $term = new Term();
     $separated_name = explode("  ", $children->name);
     $term->id = $separated_name[0];
-    if (count($separated_name) > 1) {
-      $term->name = $separated_name[1];
-    } else {
-      $term->name = $term->id;
-    }
+    $term->name = count($separated_name) > 1 ? $separated_name[1] : $term->id;
     $term->parents[] = end($previous_objects)->name;
-    $previous_objects[] = $children;
+
     if (isset($terms[$term->id])) {
-      $terms[$term->id]->parents[] = end($previous_objects)->name;
+//      if (!in_array(end($previous_objects)->name, $terms[$term->id]->parents))
+//        $terms[$term->id]->parents[] = end($previous_objects)->name;
+      $terms[$term->id]->count++;
+      $term_id = $term->id . '__' . $terms[$term->id]->count;
+      $terms[$term_id] = $term;
     } else {
       $terms[$term->id] = $term;
     }
 
+    $previous_objects[] = $children;
+
     return get_terms($children->children, $terms, $previous_objects);
   }
+
   if (is_object($children)) {
     $term = new Term();
     $access_name = explode("  ", $children->name);
@@ -110,6 +125,13 @@ function get_terms($children, &$terms, $previous_objects) {
   }
 }
 
+/**
+ * @param $current_object
+ * @param $object_array
+ *
+ *  Checks to see if we have reached the end of a branch and backs out of the
+ *  branch if necessary.
+ */
 function update_object_array($current_object, &$object_array) {
   $reverse_object_array = array_reverse($object_array);
 
