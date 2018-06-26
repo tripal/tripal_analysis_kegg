@@ -15,7 +15,7 @@ class Term {
 
 if ($argc < 2) echo "Please specify input files for parsing.\n";
 else {
-  $terms = array();
+  $terms = [];
   $db_name = "KEGG:";
   $output_file = "kegg.obo";
   $file_contents = "";
@@ -39,18 +39,19 @@ else {
   $output = "format-version: 1.2\ndefault-namespace: kegg ontology\n\n";
 
   // Print out all the terms
-  foreach ($terms as $value) {
-    $term_id = explode('__', $value->id)[0];
+  foreach ($terms as $term) {
+    // Separate the ID from its numerical identifier if it has duplicates
+    $term_id = explode('__', $term->id)[0];
     // Append a unique identifier so the OBO doesn't break on duplicates
-    if ($value->has_duplicate) $term_id .= " ($value->subtype)";
+    if ($term->has_duplicate) $term_id .= " ($term->subtype)";
 
     $output .= "[Term]\n";
     $output .= "id: $db_name$term_id\n";
-    $output .= "name: $value->name\n";
-    if ($value->description) $output .= "def: $value->description\n";
-    foreach ($value->parents as $parent) {
+    $output .= "name: $term->name\n";
+    if ($term->description) $output .= "def: $term->description\n";
+    foreach ($term->parents as $parent) {
       // If parent name matches term id, ignore it
-      if ($parent == $value->id) continue;
+      if ($parent == $term->id) continue;
       $output .= "is_a: $db_name$parent\n";
     }
     $output .= "\n";
@@ -88,9 +89,21 @@ function get_terms($children, &$terms, $previous_objects) {
 
     if (isset($terms[$term->id])) {
       $found = false;
+      $subtype = $previous_objects[0]->name;
+      // Try to see if the term already exists under the same subtype
+      // If so, IDs will be the same and OBO will break
+      // So if it's found, instead just add relationships to the other term
+      // todo: dry
+      if ($subtype == $terms[$term->id]->subtype) {
+        $terms[$term->id]->parents[] = end($previous_objects)->name;
+        $found = true;
+      }
+
       for ($i = 0; $i < $terms[$term->id]->count; $i++) {
+        // Re-create ID with suffix to each known duplicate term
         $tid = $term->id . '__' . ($i + 1);
-        if ($previous_objects[0]->name == $terms[$tid]->subtype && !in_array(end($previous_objects)->name, $terms[$tid]->parents)) {
+
+        if ($subtype == $terms[$tid]->subtype && !in_array(end($previous_objects)->name, $terms[$tid]->parents)) {
           $terms[$tid]->parents[] = end($previous_objects)->name;
           $found = true;
           break;
@@ -98,6 +111,7 @@ function get_terms($children, &$terms, $previous_objects) {
       }
       if (!$found) {
         $terms[$term->id]->count++;
+        // Create a unique identifier so we can find the term later
         $term_id = $term->id . '__' . $terms[$term->id]->count;
         $terms[$term_id] = $term;
         $terms[$term_id]->subtype = $previous_objects[0]->name;
