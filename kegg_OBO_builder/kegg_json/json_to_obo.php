@@ -152,7 +152,7 @@ function tripal_analysis_kegg_update_object_array($current_object, &$object_arra
  *  Returns the ID given by a name in the JSON file.
  */
 function tripal_analysis_kegg_get_ID($string, $subtype = '', $subtype_condition = '') {
-  $id = explode('__', $string);
+  $id = explode('  ', $string);
   $id = $id[0];
   if ($subtype != $subtype_condition)
     $id .= " ($subtype)";
