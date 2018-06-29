@@ -78,9 +78,9 @@ function tripal_analysis_kegg_get_terms($children, &$terms, $previous_objects) {
 
     if (isset($terms[$term->id])) {
       if (!in_array(end($previous_objects), $terms[$term->id]->parents))
-        $terms[$term->id]->parents[] = tripal_analysis_kegg_get_ID(end($previous_objects)->name, $subtype, $previous_objects[0]->name);
+        $terms[$term->id]->parents[] = tripal_analysis_kegg_get_ID(end($previous_objects)->name, $subtype, end($previous_objects)->name);
     } else {
-      $term->parents[] = tripal_analysis_kegg_get_ID(end($previous_objects)->name, $subtype, $previous_objects[0]->name);
+      $term->parents[] = tripal_analysis_kegg_get_ID(end($previous_objects)->name, $subtype, end($previous_objects)->name);
       $terms[$term->id] = $term;
     }
 
@@ -103,7 +103,7 @@ function tripal_analysis_kegg_get_terms($children, &$terms, $previous_objects) {
       $term->name = $term->id;
     }
     $subtype = $previous_objects[0]->name;
-    $term->parents[] = tripal_analysis_kegg_get_ID(end($previous_objects)->name, $subtype, $previous_objects[0]->name);
+    $term->parents[] = tripal_analysis_kegg_get_ID(end($previous_objects)->name, $subtype, end($previous_objects)->name);
 
     if (isset($terms[$term->id])) {
       // Duplicate relationship protection
