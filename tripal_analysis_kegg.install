@@ -5,8 +5,11 @@
  */
 function tripal_analysis_kegg_install() {
 
-  // Register this analysis module.
-  tripal_register_analysis_child('tripal_analysis_kegg');
+  // For Tripal v2 backwards compatibility, register this
+  // module as an analysis.
+  if (module_exists('tripal_analysis')) {
+    tripal_register_analysis_child('tripal_analysis_kegg');
+  }
 
   // Add the cvterms needed for this module.
   tripal_analysis_kegg_add_cvterms();
@@ -168,13 +171,16 @@ function tripal_analysis_kegg_add_cvterms() {
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
-
 }
 /*******************************************************************************
 * Implementation of hook_uninstall()
 */
 function tripal_analysis_kegg_uninstall() {
-  tripal_unregister_analysis_child('tripal_analysis_kegg');
+  // For Tripal v2 backwards compatibility, unregister this
+  // module as an analysis.
+  if (module_exists('tripal_analysis')) {
+    tripal_unregister_analysis_child('tripal_analysis_kegg');
+  }
 
   $mview_id = tripal_get_mview_id('kegg_by_organism');
   if ($mview_id) {
@@ -199,6 +205,45 @@ function tripal_analysis_kegg_requirements($phase) {
     }
   }
   return $requirements;
+}
+
+/**
+ * Create Analysis Interpro Entity Type
+ */
+function tripal_analysis_kegg_create_entity_type () {
+  $term = tripal_insert_cvterm(array(
+    'id' => 'local:kegg_results',
+    'name' => 'KEGG results',
+    'cv_name' => 'local',
+    'definition' => 'Results for KEGG analysis.',
+  ));
+
+  $error = '';
+  $args = array(
+    'vocabulary' => 'local',
+    'accession' => 'kegg_results',
+    'term_name' => 'KEGG results',
+    'storage_args' => array(
+      'data_table' => 'analysis',
+      'type_linker_table' => 'analysisprop',
+      'type_column' => 'type_id',
+      'type_value' => 'kegg_analysis'
+    )
+  );
+  $term = tripal_load_term_entity(array('vocabulary' => 'local', 'accession' => 'kegg_results'));
+  $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
+  // Add cvterm_mapping for the KEGG results entity type
+  $identifier = array(
+    'cv_id' => array('name' => 'local'),
+    'name' => 'KEGG results'
+  );
+  $cvterm = tripal_get_cvterm($identifier);
+  tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
+  if (!$term or !$bundle) {
+    if (!tripal_create_bundle($args, $error)) {
+      throw new Exception($error['!message']);
+    }
+  }
 }
 
 /**
@@ -277,5 +322,36 @@ function tripal_analysis_kegg_update_7202() {
   catch (\PDOException $e) {
     $error = $e->getMessage();
     throw new DrupalUpdateException('Failed to complete update: ' . $error);
+  }
+}
+
+/**
+ * Create KEGG results entity type
+ */
+function tripal_analysis_kegg_update_7301() {
+  try {
+    tripal_analysis_kegg_create_entity_type();
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Failed to create entity type [KEGG results]: '. $error);
+  }
+}
+
+/**
+ * Add cvterm mapping for the 'KEGG results' entity type
+ */
+function tripal_analysis_kegg_update_7302() {
+  try {
+    $identifier = array(
+      'cv_id' => array('name' => 'local'),
+      'name' => 'KEGG results'
+    );
+    $cvterm = tripal_get_cvterm($identifier);
+    tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Could not perform update: '. $error);
   }
 }
