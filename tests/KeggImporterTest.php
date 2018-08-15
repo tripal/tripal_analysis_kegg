@@ -13,7 +13,15 @@ class KeggImporterTest extends TripalTestCase {
   public function testKeggImporterBasic() {
     $importer = $this->runKEGGImporterDevSeed();
 
-    $this->assertNotNull($importer);
+    $query = db_select('chado.feature', 'f');
+      $query->join('chado.feature_cvterm', 'fc', 'f.feature_id = fc.feature_id');
+      $query->join('chado.cvterm', 'c', 'c.cvterm_id = fc.cvterm_id');
+      $query->condition('f.name', 'FRAEX38873_v2_000000060.1');
+      $query->fields('c', ['name']);
+      $name = $query->execute()->fetchField();
+    //mnat1 === name for kegg K10842.
+    //see https://github.com/statonlab/tripal_dev_seed/blob/master/Fexcel_mini/kegg/f_excelsior_ko.txt
+      $this->assertEquals('MNAT1', $name);
 
   }
 
@@ -63,6 +71,7 @@ class KeggImporterTest extends TripalTestCase {
 
     $importer = new \KeggImporter();
     $importer->create($run_args, $file);
+    $importer->prepareFiles();
     $importer->run();
     return $importer;
   }
