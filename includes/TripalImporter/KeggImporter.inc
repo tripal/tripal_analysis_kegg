@@ -196,7 +196,7 @@ class KeggImporter extends TripalImporter
     $terms = array();
 
     // open the file
-    $handle = file($kegg_file, FILE_IGNORE_NEW_LINES);
+    $handle = fopen($kegg_file, "r");
 
     // read the file
     foreach($handle as $line) {
