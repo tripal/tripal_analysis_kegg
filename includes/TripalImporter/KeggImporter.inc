@@ -213,57 +213,36 @@ class KeggImporter extends TripalImporter {
         //KEGG returns features without annotations: skip them.
         continue;
       }
-      $ko_id = $line[1];
+      $ko_accession = $line[1];
+      //remove newlines
+      $ko_accession = str_replace(["\r", "\n"], '', $ko_accession);
 
-      $ko_id = str_replace(["\r", "\n"], '', $ko_id);
+      $query = db_select('chado.cvterm', 'cvt');
+      $query->join('chado.dbxref', 'dbx', 'dbx.dbxref_id = cvt.dbxref_id');
+      $query->fields('cvt', ['cvterm_id']);
+      $query->condition('dbx.accession', $ko_accession, '=');
+      $result = $query->execute()->fetchObject();
 
-      // find the definition from the database
-      $sql = "SELECT CV.definition, CV.cvterm_id
-      FROM {chado.cvterm} CV
-      INNER JOIN {chado.dbxref} DB ON CV.dbxref_id = DB.dbxref_id
-      WHERE DB.accession = :ko_id";
-
-      $result = db_query($sql, [':ko_id' => $ko_id]);
 
       if (!$result) {
         watchdog('trp_kegg', "ERROR: Unable to find KEGG term:  '%ko_id'",
-          ['%ko_id' => $ko_id], 'error');
-        exit;
+          ['%ko_id' => $ko_accession], 'error');
+        continue;
       }
+      $cvterm_id = $result->cvterm_id;
 
-      // if record exists, pull out the definition from the record
-      foreach ($result as $record) {
-        $def = $record->definition;
-        $cvterm_id = $record->cvterm_id;
-      }
-
-
-      $term = [
-        "feature_name" => $feature_name,
-        "accession" => $ko_id,
-        "definition" => $def,
-        "cvterm_id" => $cvterm_id,
-      ];
-
-      // we're only worried about features that have a kegg term
-      if ($ko_id) {
-        $terms[] = $term;
-      }
-    }
-
-    foreach ($terms as $term) {
       // get the feature name using the user's regular expression
-      if ($query_re and preg_match("/$query_re/", $term['feature_name'], $matches)) {
+      if ($query_re and preg_match("/$query_re/", $feature_name, $matches)) {
         $feature = $matches[1];
       }
       // If not in above format then pull up to the first space
       else {
-        if (preg_match('/^(.*?)\s.*$/', $term['feature_name'], $matches)) {
+        if (preg_match('/^(.*?)\s.*$/', $feature_name, $matches)) {
           $feature = $matches[1];
         }
         // if no match up to the first space then just use the entire string
         else {
-          $feature = $term['feature_name'];
+          $feature = $feature_name;
         }
       }
 
@@ -289,9 +268,12 @@ class KeggImporter extends TripalImporter {
 
       $f_id = chado_select_record('feature', ['feature_id'], $select);
 
-      foreach ($f_id as $id) {
+      if (count($f_id) > 1) {
+        $this->LogMessage("Unable to uniquely identify feature '!name'", ['!name' => $feature_name]);
+        print ("Could not identify $feature_name\n");
+        continue;
       }
-      $feature_id = $id->feature_id;
+      $feature_id = $f_id[0]->feature_id;
 
       // find the publication id with which to associate
 
@@ -308,25 +290,18 @@ class KeggImporter extends TripalImporter {
         return;
       }
 
-      // Ensure everything is valid before insertion
-      if (!$term['cvterm_id']) {
-        $this->LogMessage("Unable to find a Chado cvterm record for the KEGG term '!name'", ['!name' => $ko_id]);
-        print ("No cvterm for $feature_name");
-        continue;
-      }
       if (!$feature_id) {
         $this->logMessage("Unable to identify the feature for  '!name'",
           ['!name' => $feature_name, TRIPAL_WARNING]);
         continue;
 
       }
-
       // Annotate the feature
       $sql = "INSERT INTO chado.feature_cvterm (cvterm_id, feature_id, pub_id) 
       VALUES (:cvterm_id, :feature_id, :pub_id)";
 
       chado_query($sql, [
-        ':cvterm_id' => $term['cvterm_id'],
+        ':cvterm_id' => $cvterm_id,
         ':feature_id' => $feature_id,
         ':pub_id' => $pub_id,
       ]);
