@@ -226,7 +226,7 @@ class KeggImporter extends TripalImporter {
 
       if (!$result) {
         watchdog('trp_kegg', "ERROR: Unable to find KEGG term:  '%ko_id'",
-          ['%ko_id' => $ko_accession], 'error');
+          ['%ko_id' => $ko_accession], WATCHDOG_WARNING);
         continue;
       }
       $cvterm_id = $result->cvterm_id;
@@ -286,7 +286,7 @@ class KeggImporter extends TripalImporter {
         $pub_id = $record->pub_id;
       }
       if (!$pub_id) {
-        watchdog('trp_kegg', "ERROR: Unable to find publication ID", [], 'error');
+        watchdog('trp_kegg', "ERROR: Unable to find publication ID", [], WATCHDOG_WARNING);
         return;
       }
 
