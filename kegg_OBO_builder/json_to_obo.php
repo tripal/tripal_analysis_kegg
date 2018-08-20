@@ -36,7 +36,7 @@ else {
   foreach ($terms as $term) {
     $output .= "[Term]\n";
     $output .= "id: $db_name$term->id\n";
-    $output .= "name: $term->name\n";
+    $output .= "name: $term->name ($term->id)\n";
     if ($term->description) $output .= "def: $term->description\n";
     foreach ($term->parents as $parent) {
       // Safety check
