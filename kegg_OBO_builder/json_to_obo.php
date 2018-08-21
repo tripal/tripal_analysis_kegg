@@ -36,7 +36,7 @@ else {
   foreach ($terms as $term) {
     $output .= "[Term]\n";
     $output .= "id: $db_name$term->id\n";
-    $output .= "name: $term->name ($term->id)\n";
+    $output .= "name: $term->name\n";
     if ($term->description) $output .= "def: $term->description\n";
     foreach ($term->parents as $parent) {
       // Safety check
@@ -95,7 +95,9 @@ function tripal_analysis_kegg_get_terms($children, &$terms, $previous_objects) {
     $term->id = $access_name[0];
     if (count($access_name) > 1) {
       $desc_name = explode('; ', $access_name[1]);
-      $term->name = $desc_name[0];
+      $unique_name = $desc_name[0] . ' ('. $term->id .')';
+
+      $term->name = $unique_name;
       if (count($desc_name) > 1) {
         $term->description = $desc_name[1];
       }
