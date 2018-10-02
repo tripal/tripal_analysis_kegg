@@ -1,7 +1,7 @@
 
 ## Tripal Analysis KEGG
 
-This module allows you to import KEGG annotations created by the KEGG KOALA annotation tool.  
+This module allows you to import KEGG annotations created by the KEGG KOALA annotation tool into a Tripal v3 site. 
 
 ### Annotating data
 
