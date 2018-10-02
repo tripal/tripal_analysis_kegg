@@ -213,15 +213,18 @@ function tripal_analysis_kegg_requirements($phase) {
 /**
  * Create Analysis Interpro Entity Type
  */
-function tripal_analysis_kegg_create_entity_type () {
-  $term = tripal_insert_cvterm(array(
+function tripal_analysis_kegg_create_entity_type() {
+  
+  // Add the vocabulary term.
+  $term = chado_insert_cvterm(array(
     'id' => 'local:kegg_results',
     'name' => 'KEGG results',
     'cv_name' => 'local',
     'definition' => 'Results for KEGG analysis.',
   ));
 
-  $error = '';
+  // Next add the content type
+  $cvterm = tripal_get_cvterm(['id' => 'local:kegg_results']);
   $args = array(
     'vocabulary' => 'local',
     'accession' => 'kegg_results',
@@ -233,18 +236,11 @@ function tripal_analysis_kegg_create_entity_type () {
       'type_value' => 'kegg_analysis'
     )
   );
-  $term = tripal_load_term_entity(array('vocabulary' => 'local', 'accession' => 'kegg_results'));
-  $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
-  // Add cvterm_mapping for the KEGG results entity type
-  $identifier = array(
-    'cv_id' => array('name' => 'local'),
-    'name' => 'KEGG results'
-  );
-  $cvterm = tripal_get_cvterm($identifier);
-  tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
-  if (!$term or !$bundle) {
-    if (!tripal_create_bundle($args, $error)) {
-      throw new Exception($error['!message']);
+  $bundle = tripal_load_bundle_entity(['accession' => $args['vocabulary'] . ':' . $args['accession']]);
+  if (!$bundle) {
+    if (!tripal_create_bundle($args, $job)) {
+      $msg = t('Error encountered creating !type Content Type.', ['!type' => $args['term_name']]);
+      throw new Exception($msg);
     }
   }
 }

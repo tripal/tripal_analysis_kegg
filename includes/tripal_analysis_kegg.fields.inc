@@ -11,7 +11,7 @@ function tripal_analysis_kegg_bundle_fields_info($entity_type, $bundle) {
 
   $term = tripal_load_term_entity(array('term_id' => $bundle->term_id));
   $vocab = $term->vocab;
-  if ($vocab->vocabulary == 'local' && $term->accession == 'kegg_results') {
+  if ($vocab->vocabulary == 'SO') {
     $field_name = 'local__kegg_results';
     $field_type = 'local__kegg_results';
     $info[$field_name] = array(
@@ -28,7 +28,7 @@ function tripal_analysis_kegg_bundle_fields_info($entity_type, $bundle) {
 }
 
 /**
- * Impelments hook_create_tripalfield_instance().
+ * Implements hook_create_tripalfield_instance().
  *
  * This is a Tripal defined hook that supports integration with the
  * TripalEntity field.
@@ -39,7 +39,7 @@ function tripal_analysis_kegg_bundle_instances_info($entity_type, $bundle) {
   $term = tripal_load_term_entity(array('term_id' => $bundle->term_id));
   $vocab = $term->vocab;
 
-  if ($vocab->vocabulary == 'local' && $term->accession == 'kegg_results') {
+  if ($vocab->vocabulary == 'SO') {
     $field_name = 'local__kegg_results';
     $info[$field_name] = array(
       'field_name' => $field_name,
@@ -53,13 +53,16 @@ function tripal_analysis_kegg_bundle_instances_info($entity_type, $bundle) {
         'chado_table' => 'analysis_feature',
         'chado_column' => '',
         'base_table' => 'feature',
+        'term_vocabulary' => 'local',
+        'term_name' => 'KEGG results',
+        'term_accession' => 'kegg_results',
       ),
       'widget' => array(
         'type' => 'local__kegg_results_widget',
       ),
       'display' => array(
         'default' => array(
-          'label' => 'inline',
+          'label' => 'hidden',
           'type' => 'local__kegg_results_formatter',
         ),
       ),

@@ -157,7 +157,7 @@ function tripal_analysis_kegg_full_report($analysis_id) {
     return $content = tripal_analysis_kegg_brite($analysis_id, 0, 0);
   }
 
-  return "<i>Note:</i> No results available.";
+  return FALSE;
 }
 
 /*******************************************************************************
