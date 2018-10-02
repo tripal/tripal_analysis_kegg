@@ -255,7 +255,7 @@ function tripal_analysis_kegg_create_entity_type() {
 function tripal_analysis_kegg_add_obo(){
 
   $name = 'KEGG';
-  $path = drupal_get_path() . '/kegg.obo';
+  $path = drupal_get_path('module','tripal_analysis_kegg') . '/kegg.obo';
 
   $obo_id = db_select('public.tripal_cv_obo', 't')
     ->fields('t', ['obo_id'])
