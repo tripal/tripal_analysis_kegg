@@ -1,7 +1,7 @@
 <?php
 
-class KeggImporter extends TripalImporter
-{
+class KeggImporter extends TripalImporter {
+
   /**
    * The name of this loader.  This name will be presented to the site
    * user.
@@ -23,7 +23,7 @@ class KeggImporter extends TripalImporter
   /**
    * An array containing the extensions of allowed file types.
    */
-  public static $file_types = array('txt');
+  public static $file_types = ['txt'];
 
 
   /**
@@ -64,14 +64,14 @@ class KeggImporter extends TripalImporter
   /**
    * Indicates the methods that the file uploader will support.
    */
-  public static $methods = array(
+  public static $methods = [
     // Allow the user to upload a file to the server.
     'file_upload' => TRUE,
     // Allow the user to provide the path on the Tripal server for the file.
     'file_local' => TRUE,
     // Allow the user to provide a remote URL for the file.
     'file_remote' => TRUE,
-  );
+  ];
 
   /**
    * Indicates if the file must be provided.  An example when it may not be
@@ -87,7 +87,7 @@ class KeggImporter extends TripalImporter
    * be a separate array containing a machine_name, name, and description
    * keys.  This information is used to build the help text for the loader.
    */
-  public static $argument_list = array();
+  public static $argument_list = [];
 
 
   /**
@@ -112,34 +112,34 @@ class KeggImporter extends TripalImporter
     $query_uniquename = '';
     $query_type = '';
 
-    $form['query_re'] = array(
+    $form['query_re'] = [
       '#title' => t('Query Name RE'),
       '#type' => 'textfield',
-      '#description' => t('Enter the regular expression that will extract the '.
-        'feature name from the query line in the interpro results. This option '.
-        'is only required when the query does not identically match a feature '.
+      '#description' => t('Enter the regular expression that will extract the ' .
+        'feature name from the query line in the interpro results. This option ' .
+        'is only required when the query does not identically match a feature ' .
         'in the database. For example: ^.*id=(.*?).*$'),
       '#default_value' => $query_re,
-    );
+    ];
 
-    $form['query_uniquename'] = array(
+    $form['query_uniquename'] = [
       '#title' => t('Use Unique Name'),
       '#type' => 'checkbox',
       '#description' => t('Select this checkbox if the query name in the results file matches the unique name of the feature.'),
       '#default_value' => $query_uniquename,
-    );
+    ];
 
-    $cv = tripal_get_cv(array('name' => 'sequence'));
+    $cv = tripal_get_cv(['name' => 'sequence']);
     $cv_id = $cv->cv_id;
-    $form['query_type'] = array(
+    $form['query_type'] = [
       '#title' => t('Query Type'),
       '#type' => 'textfield',
-      '#description' => t('Please enter the Sequence Ontology term (e.g. contig, polypeptide, mRNA) that describes '.
-        'the query sequences in the InterProScan XML results file(s).  This is only necessary if two '.
+      '#description' => t('Please enter the Sequence Ontology term (e.g. contig, polypeptide, mRNA) that describes ' .
+        'the query sequences in the InterProScan XML results file(s).  This is only necessary if two ' .
         'or more sequences have the same name.'),
       '#default_value' => $query_type,
       '#autocomplete_path' => "admin/tripal/storage/chado/auto_name/cvterm/$cv_id",
-    );
+    ];
 
     return $form;
   }
@@ -162,12 +162,13 @@ class KeggImporter extends TripalImporter
    */
   public function formValidate($form, &$form_state) {
     // trim character fields
-    $form_state['values']['query_uniquename']  = trim($form_state['values']['query_uniquename']);
-    $form_state['values']['query_type']        = trim($form_state['values']['query_type']);
-    $form_state['values']['query_re']          = trim($form_state['values']['query_re']);
+    $form_state['values']['query_uniquename'] = trim($form_state['values']['query_uniquename']);
+    $form_state['values']['query_type'] = trim($form_state['values']['query_type']);
+    $form_state['values']['query_re'] = trim($form_state['values']['query_re']);
     // check the regular expression to make sure it is valid
-    set_error_handler(function() {}, E_WARNING);
-    $result = preg_match("/" . $form_state['values']['query_re'] . "/", null);
+    set_error_handler(function () {
+    }, E_WARNING);
+    $result = preg_match("/" . $form_state['values']['query_re'] . "/", NULL);
     restore_error_handler();
     if ($result === FALSE) {
       form_set_error('query_re', 'Invalid regular expression.');
@@ -193,13 +194,14 @@ class KeggImporter extends TripalImporter
   public function parse_kegg_file($kegg_file, $organism_id,
                                   $query_re, $query_uniquename, $query_type) {
 
-    $terms = array();
+    $terms = [];
 
     // open the file
-    $handle = file($kegg_file, FILE_IGNORE_NEW_LINES);
+    $handle = fopen($kegg_file, "r");
 
     // read the file
-    foreach($handle as $line) {
+
+    while (($line = fgets($handle)) !== FALSE) {
       // the variables that will hold info on our term
       $def = "";
       $cvterm_id = "";
@@ -207,62 +209,45 @@ class KeggImporter extends TripalImporter
       // separate into feature name and kegg id
       $line = explode("\t", $line);
       $feature_name = $line[0];
-      $ko_id = $line[1];
-
-      // find the definition from the database
-      $sql = "SELECT CV.definition, CV.cvterm_id
-      FROM {chado.cvterm} CV
-      INNER JOIN {chado.dbxref} DB ON CV.dbxref_id = DB.dbxref_id
-      WHERE DB.accession = :ko_id";
-
-      $result = db_query($sql, array(':ko_id' => $ko_id));
-
-      // if record exists, pull out the definition from the record
-      if ($result) {
-        foreach ($result as $record) {
-          $def = $record->definition;
-          $cvterm_id = $record->cvterm_id;
-        }
+      if (!isset($line[1])) {
+        //KEGG returns features without annotations: skip them.
+        continue;
       }
+      $ko_accession = $line[1];
+      //remove newlines
+      $ko_accession = str_replace(["\r", "\n"], '', $ko_accession);
 
-      if (!$result)
-      {
+      $query = db_select('chado.cvterm', 'cvt');
+      $query->join('chado.dbxref', 'dbx', 'dbx.dbxref_id = cvt.dbxref_id');
+      $query->fields('cvt', ['cvterm_id']);
+      $query->condition('dbx.accession', $ko_accession, '=');
+      $result = $query->execute()->fetchObject();
+
+
+      if (!$result) {
         watchdog('trp_kegg', "ERROR: Unable to find KEGG term:  '%ko_id'",
-          array('%ko_id' => $ko_id), 'error');
-        exit;
+          ['%ko_id' => $ko_accession], WATCHDOG_WARNING);
+        continue;
       }
+      $cvterm_id = $result->cvterm_id;
 
-      $term = array(
-        "feature_name" => $feature_name,
-        "accession" => $ko_id,
-        "definition" => $def,
-        "cvterm_id" => $cvterm_id,
-      );
-
-      // we're only worried about features that have a kegg term
-      if ($ko_id) $terms[] = $term;
-    }
-
-    var_dump($terms);
-
-    foreach ($terms as $term) {
       // get the feature name using the user's regular expression
-      if ($query_re and preg_match("/$query_re/", $term['feature_name'], $matches)) {
+      if ($query_re and preg_match("/$query_re/", $feature_name, $matches)) {
         $feature = $matches[1];
       }
       // If not in above format then pull up to the first space
       else {
-        if (preg_match('/^(.*?)\s.*$/', $term['feature_name'], $matches)) {
+        if (preg_match('/^(.*?)\s.*$/', $feature_name, $matches)) {
           $feature = $matches[1];
         }
         // if no match up to the first space then just use the entire string
         else {
-          $feature = $term['feature_name'];
+          $feature = $feature_name;
         }
       }
 
       // now find the feature in chado
-      $select = array();
+      $select = [];
       if ($query_uniquename) {
         $select['uniquename'] = $feature;
       }
@@ -273,18 +258,22 @@ class KeggImporter extends TripalImporter
         $select['organism_id'] = $organism_id;
       }
       if ($query_type) {
-        $select['type_id'] = array(
-          'cv_id' => array(
-            'name' => 'sequence'
-          ),
+        $select['type_id'] = [
+          'cv_id' => [
+            'name' => 'sequence',
+          ],
           'name' => $query_type,
-        );
+        ];
       }
 
-      $f_id = chado_select_record('feature', array('feature_id'), $select);
+      $f_id = chado_select_record('feature', ['feature_id'], $select);
 
-      foreach ($f_id as $id)
-        $feature_id = $id->feature_id;
+      if (count($f_id) > 1) {
+        $this->LogMessage("Unable to uniquely identify feature '!name'", ['!name' => $feature_name]);
+        print ("Could not identify $feature_name\n");
+        continue;
+      }
+      $feature_id = $f_id[0]->feature_id;
 
       // find the publication id with which to associate
 
@@ -293,36 +282,29 @@ class KeggImporter extends TripalImporter
         WHERE P.uniquename = 'null'";
 
       $result = db_query($sql);
-      foreach($result as $record) $pub_id = $record->pub_id;
-      if (!$pub_id)
-      {
-        watchdog('trp_kegg', "ERROR: Unable to find publication ID", array(), 'error');
-        exit;
+      foreach ($result as $record) {
+        $pub_id = $record->pub_id;
+      }
+      if (!$pub_id) {
+        watchdog('trp_kegg', "ERROR: Unable to find publication ID", [], WATCHDOG_WARNING);
+        return;
       }
 
-      // Ensure everything is valid before insertion
-      if ($term['cvterm_id'])
-      {
-        watchdog ('trp_kegg', "ERROR: Unable to find cvterm_id:  '%cvterm_id'",
-          array('%cvterm' => $term['cvterm_id']), 'error');
-        exit;
-      }
-      if ($term['cvterm_id'])
-      {
-        watchdog ('trp_kegg', "ERROR: Unable to find feature_id:  '%feature_id'",
-          array(), 'error');
-        exit;
-      }
+      if (!$feature_id) {
+        $this->logMessage("Unable to identify the feature for  '!name'",
+          ['!name' => $feature_name, TRIPAL_WARNING]);
+        continue;
 
+      }
       // Annotate the feature
       $sql = "INSERT INTO chado.feature_cvterm (cvterm_id, feature_id, pub_id) 
       VALUES (:cvterm_id, :feature_id, :pub_id)";
 
       chado_query($sql, [
-        ':cvterm_id' => $term['cvterm_id'],
+        ':cvterm_id' => $cvterm_id,
         ':feature_id' => $feature_id,
         ':pub_id' => $pub_id,
-        ]);
+      ]);
     }
   }
 }
