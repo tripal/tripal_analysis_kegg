@@ -1,5 +1,4 @@
 <?php
-
 /**
  *  Implementation of hook_install();
  */
@@ -126,7 +125,7 @@ function tripal_analysis_kegg_add_mview_kegg_by_organism() {
   );
 
   // add the view
-  tripal_add_mview($view_name, 'tripal_analysis_kegg', $schema, $sql, $comment);
+  chado_add_mview($view_name, 'tripal_analysis_kegg', $schema, $sql, $comment, FALSE);
 }
 
 /**
