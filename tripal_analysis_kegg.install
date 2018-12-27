@@ -61,6 +61,10 @@ function tripal_analysis_kegg_install() {
   // Add the materialized view
   tripal_analysis_kegg_add_mview_kegg_by_organism();
 
+  //add the CV to the obo table for loading.
+
+  tripal_analysis_kegg_add_obo();
+
 }
 
 
@@ -214,7 +218,7 @@ function tripal_analysis_kegg_requirements($phase) {
  * Create Analysis Interpro Entity Type
  */
 function tripal_analysis_kegg_create_entity_type() {
-  
+
   // Add the vocabulary term.
   $term = chado_insert_cvterm(array(
     'id' => 'local:kegg_results',
@@ -243,6 +247,28 @@ function tripal_analysis_kegg_create_entity_type() {
       throw new Exception($msg);
     }
   }
+}
+
+/**
+ * Creates the KEGG OBO record in the OBO table (public.tripal_cv_obo).
+ */
+function tripal_analysis_kegg_add_obo(){
+
+  $name = 'KEGG';
+  $path = drupal_get_path('module','tripal_analysis_kegg') . '/kegg.obo';
+
+  $obo_id = db_select('public.tripal_cv_obo', 't')
+    ->fields('t', ['obo_id'])
+    ->condition('t.name', $name)
+    ->execute()
+    ->fetchField();
+
+  if (!$obo_id) {
+    $obo_id = db_insert('public.tripal_cv_obo')
+      ->fields(['name' => $name, 'path' => $path])
+      ->execute();
+  }
+
 }
 
 /**
@@ -354,4 +380,11 @@ function tripal_analysis_kegg_update_7302() {
     $error = $e->getMessage();
     throw new DrupalUpdateException('Could not perform update: '. $error);
   }
+}
+
+/**
+ * Add the local KEGG OBO file to the OBO importer table.
+ */
+function tripal_analysis_kegg_update_7303(){
+  tripal_analysis_kegg_add_obo();
 }
